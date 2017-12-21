@@ -1,0 +1,90 @@
+<!DOCTYPE>
+<html>
+<head>
+    <title>Test Service</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+</head>
+
+<body>
+    <h1>File API</h1>
+    <h2>Upload test</h2>
+    <form action="http://localhost:3000/files/upload" method="POST" enctype="multipart/form-data">
+        <input type="file" name="fileUpload" size="50" /><br />
+        <input type="submit" value="Upload File" />
+    </form>
+    <h2>Upload image test</h2>
+    <form action="http://localhost:3000/files/image" method="POST" enctype="multipart/form-data">
+        <input type="file" name="imageUpload" size="50" /><br />
+        <input type="submit" value="Upload File" />
+    </form>
+    <h2>Các API còn lại: <i>Chi tiết sẽ mô tả trong file mô tả</i></h2>
+    <ul>
+        <li>Download file: [GET] <a href="#">http://localhost:3000/files/get/{:file_id}</a></li>
+        <li>Get information: [GET] <a href="#">http://localhost:3000/files/info/{:file_id}</a></li>
+        <li>Delete file: [DELETE] <a href="#">http://localhost:3000/files/delete/{:file_id}</a></li>
+        <li>Get info all file:[GET]<a href="#">http://localhost:3000/test/files</a><i> For test, will remove</i></li>
+    </ul>
+
+    <h1>User API</h1>
+    <h2>Creat user</h2>
+    <form action="http://localhost:3000/users" method="POST">
+        UserName:   <input type="text" name="username" id="username"/>
+        Password:   <input type="password" name="password" id="password"/></br>
+        FirstName:  <input type="text" name="firstname" id="firstname"/>
+        LastName:   <input type="text" name="lastname" id="lastname"/></br>
+        Gender :    <select name="gender" id="gender">
+                        <option value="0">none</option>
+                        <option value="1">male</option>
+                        <option value="2">female</option>
+                    </select>
+        <input type="submit" value="Submit"/>
+    </form>
+
+    <h2>Các API còn lại: <i>Chi tiết sẽ mô tả trong file mô tả</i></h2>
+    <ul>
+        <li>Download file: [GET] <a href="#">http://localhost:3000/files/get/{:file_id}</a></li>
+        <li>Get information: [GET] <a href="#">http://localhost:3000/files/info/{:file_id}</a></li>
+        <li>Delete file: [DELETE] <a href="#">http://localhost:3000/files/delete/{:file_id}</a></li>
+        <li>Get info all file:[GET]<a href="#">http://localhost:3000/test/files</a><i> For test, will remove</i></li>
+    </ul>
+
+    <h2>Test Upload test</h2>
+    <form action="http://localhost:9998" method="POST" enctype="multipart/form-data">
+        <input type="file" name="fileUpload" size="50" /><br />
+        <input type="submit" value="Upload File" />
+    </form>
+
+
+    <h2>Upload test Profile</h2>
+    <form action="http://localhost:3000/users/profileImage/1511193107482" method="POST" enctype="multipart/form-data">
+        <input type="file" name="profileImage" size="50" /><br />
+        <input type="submit" value="Upload File" />
+    </form>
+
+    <h2>Upload test Cover</h2>
+    <form action="http://localhost:3000/users/coverImage/1511193107482" method="POST" enctype="multipart/form-data">
+        <input type="file" name="coverImage" size="50" /><br />
+        <input type="submit" value="Upload File" />
+    </form>
+    <h2>Upload test Group</h2>
+    <form action="http://localhost:3000/groups/profileImage/1511167698586" method="POST" enctype="multipart/form-data">
+        <input type="file" name="profileImage" size="50" /><br />
+        <input type="submit" value="Upload File" />
+    </form>
+
+    <h2>Check </h2>
+    <form action="http://localhost:3000/checks/username" method="GET">
+        <input type="text" name="username" size="50" placeholder="input username to check"/>
+        <input type="submit" value="Check" />
+    </form>
+    <form action="http://localhost:3000/checks/email" method="GET">
+        <input type="text" name="email" size="50" placeholder="input email to check"/>
+        <input type="submit" value="Check" />
+    </form>
+    <form action="http://localhost:3000/checks/phone" method="GET">
+        <input type="text" name="phone" size="50" placeholder="input phone to check"/>
+        <input type="submit" value="Check" />
+    </form>
+</body>
+</html>
