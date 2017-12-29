@@ -1,7 +1,40 @@
 {
     "logs": {
-        "level": "debug2",
+        "level": "debug",
         "handleExceptions": false,
         "config": "default"
+    },
+    "sendgrid": {
+        "from": "esservice@esservice.herokuapp.com",
+        "token": "token_here"
+    },
+    "phoneservice": {
+        "token":"token"
+    },
+    "webservice": {
+        "default": {
+            "url": "demo.webservice.here",
+            "method": "POST",
+            "authenticate": {
+                "grant_type": "authorization_code",
+                "token":"token"
+            }
+        },
+        "announcements": {
+            "url": "demo.webservice.here",
+            "method": "POST",
+            "authenticate": {
+                "grant_type": "authorization_code",
+                "token":"token"
+            }
+        },
+        "post": {
+            "url": "demo.webservice.here",
+            "method": "POST",
+            "authenticate": {
+                "grant_type": "authorization_code",
+                "token":"token"
+            }
+        }
     }
 }

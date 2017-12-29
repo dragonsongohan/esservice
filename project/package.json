@@ -22,9 +22,10 @@
   },
   "homepage": "https://github.com/nkn6294live/education_social_network#readme",
   "dependencies": {
+    "@sendgrid/mail": "^6.1.4",
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "^1.18.2",
-    "config": "^1.28.1",
+    "config": "^1.29.0",
     "connect-ensure-login": "^0.1.1",
     "connect-flash": "^0.1.1",
     "cookie-parser": "^1.4.3",

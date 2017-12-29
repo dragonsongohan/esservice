@@ -2,7 +2,7 @@ let PostItem = require('../models/post');
 let GroupControllers = require('../controllers/group');
 let UserController = require('../controllers/user');
 let Utils = require('../application/utils');
-
+let PostEvents = require('../application/application').events.posts;
 async function getPostByID(id) {
     try {
         let postID = Number(id);
@@ -93,6 +93,7 @@ async function addPost(req, res, next) {
         post = await post.save();
         req.groups.group_request = group;
         req.posts.post_requested = post;
+        PostEvents.emit('NewPost', group, post);
         return next();
     } catch (error) {
         return next(Utils.createError(error));

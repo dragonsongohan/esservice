@@ -12,6 +12,7 @@ router.route('/clients')
 router.route('/authorize')
     .get(authController.basicAndBearerAuthenticated, oauth2Controller.authorization)
     .post(authController.basicAndBearerAuthenticated, oauth2Controller.decision);
-router.route('/token').post(authController.isClientAuthenticated, oauth2Controller.token);
-router.route('/login').post(authController.localAuthenticated, userController.login);
+router.route('/token')
+    .post(authController.isClientAuthenticated, oauth2Controller.token);
+
 module.exports = router;

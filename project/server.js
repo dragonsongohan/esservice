@@ -54,16 +54,14 @@ app.use('/posts', postRouter);
 app.use('/events', eventRouter);
 app.use('/announcements', announcementRouter);
 
-// app.use('/apis', apiRouter);
+app.use('/apis', apiRouter);
 // app.use('/tasks', taskRouter);
 app.use('/test', testRouter);
 
 app.use(Application.defaultHandler);
 app.use(Application.errorHandler);
 
-Application.events.announcements.on('NewAnnouncement', async function(announcement) {
-    console.log("new announcement");
-});
+
 
 app.listen(Application.manager.portRunning);
 console.log('Running at ' + Application.manager.portRunning);

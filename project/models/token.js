@@ -3,8 +3,8 @@ let mongoose = require('mongoose');
 let TokenSchema = new mongoose.Schema({
     _id: { type: Number, required: true, default: getNewID() },
     value: { type: String, required: true },
-    userID: { type: String, required: true },
-    clientID: { type: String, required: false },
+    userID: { type: Number, required: true },
+    clientID: { type: Number, required: false },
     timeCreate: {type: Date, required: true, default: new Date()},
     timeExpired: {type: Date, required: false, default: null},
     scope:{type:String, require: true, default:"*"},

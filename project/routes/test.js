@@ -8,41 +8,9 @@ let Utils = require('../application/utils');
 let ConfigController = require('../controllers/config');
 let Configs = require('../models/config');
 let User = require('../models/user');
-// router.route('/files').get(fileController.getFiles);
-// router.route('/users').get(userController.getUsers)
-//     .post(userController.checkUserRequestIfHave, userController.postUser, userController.getUser);
-// router.route('/groups').get(groupController.getGroups);
-
-///////////////////////////////////////////////////////////////
-// router.route('/login')
-//     .get(function (req, res) {
-//         if (req.isAuthenticated()) {
-//             res.render('logout', {user: req.user});
-//         } else {
-//             res.render('login', {});
-//         }
-//     })
-//     .post(authController.isAuthenticated, function (req, res) {
-//         res.render('logout', {user: req.user});
-//     });
-// router.route('/logout').all(function (req, res) {
-//     // if (req.isAuthenticated()) {
-//     req.logOut();
-//     req.session.destroy();
-//     req.session = null;
-//     // }
-//     res.render('login', {});
-// });
-// router.route('/logins').get(authController.isAuthenticated, function (req, res) {
-//     console.log(req.user);
-//     res.end();
-// }).post(authController.isAuthenticated, function (req, res) {
-//     console.log(req.user);
-//     res.end();
-// });
 
 router.route('/init')
-    .post(async function (req, res, next) {
+    .get(async function (req, res, next) {
         try {
             let config = await Configs.findOne({isDeleted: false});
             if (!config) {
