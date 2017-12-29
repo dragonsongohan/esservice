@@ -4,23 +4,21 @@ let fileController = require('../controllers/fileitem');
 let postController = require('../controllers/post');
 let userController = require('../controllers/user');
 let groupController = require('../controllers/group');
+let authController = require('../controllers/auth');
 //-------------------------POST_API---------------------//
-
-router.route('/').post(fileController.arrayFileUpload, userController.checkUserRequest, groupController.checkGroupRequest, groupController.checkMemberInGroup, fileController.postFilesIfHave, postController.addPost, postController.getPost);
-router.route('/topic/:groupID').get(groupController.checkGroupRequest, postController.getPostsInTopic);
+router.use(authController.isAuthenticated);
 
 router.route('/like/:postID')
-    .get(userController.checkUserRequestIfHave, postController.checkPostRequest, postController.getLikes)
-    .post(userController.checkUserRequest, postController.checkPostRequest, postController.addLike, postController.getLikes)
-    .delete(userController.checkUserRequest, postController.checkPostRequest, postController.removeLike, postController.getLikes);
+    .get(postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, postController.checkPermitForUser, postController.getLikes)
+    .post(postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, postController.checkPermitForUser, postController.addLike, postController.getLikes)
+    .delete(postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, postController.checkPermitForUser, postController.removeLike, postController.getLikes);
 router.route('/comment/:postID')
-    .get(postController.checkPostRequest, postController.getComments)
-    .post(fileController.fileUpload, userController.checkUserRequest, fileController.postFileIfHave, postController.checkPostRequest, postController.addComment)
-    .put(fileController.fileUpload, userController.checkUserRequest, fileController.postFileIfHave, postController.checkPostRequest, postController.updateComment)
-    .delete(userController.checkUserRequest, postController.checkPostRequest, postController.deleteComment);
+    .get(postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, postController.checkPermitForUser, postController.getComments)
+    .post(fileController.fileUpload, fileController.postFileIfHave, postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, postController.checkPermitForUser, postController.addComment)
+    .put(fileController.fileUpload, fileController.postFileIfHave, postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, postController.checkPermitForUser, postController.updateComment)
+    .delete(postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, groupController.checkAdminInGroupAccount, postController.deleteComment);
 
-router.route('/:postID')//TODO check user, group, member before run
-    .get(postController.checkPostRequest, postController.getPost)
-    .delete(userController.checkUserRequest, postController.deletePost, postController.getPost)
-    .put(fileController.arrayFileUpload, userController.checkUserRequest, postController.checkPostRequest, fileController.postFilesIfHave, postController.updatePost, postController.getPost);
+router.route('info/:postID').get(postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, postController.checkPermitForUser, postController.getPost);
+router.route('delete/:postID').delete(postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, groupController.checkAdminInGroupAccount, postController.deletePost, postController.getPost);
+router.route('update/:postID').put(fileController.arrayFileUpload, postController.checkPostRequest, fileController.postFilesIfHave, postController.checkPermitForUser, postController.updatePost, postController.getPost);
 module.exports = router;

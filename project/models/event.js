@@ -14,7 +14,7 @@ let EventSchema = new mongoose.Schema({
     content: { type: String, required: true, default: 'No Content' },
     userCreate: {
         type: {
-            _id: Number,
+            id: Number,
             firstName: String,
             lastName: String,
             profileImageID: String,

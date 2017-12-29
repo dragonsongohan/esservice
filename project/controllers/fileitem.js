@@ -3,6 +3,9 @@ let multer = require('multer');
 let fs = require('fs');
 let path = require('path');
 let UPLOAD_PATH = 'uploads/';
+let Utils = require('../application/utils');
+let userController = require('../controllers/user');
+let groupController = require('../controllers/group');
 // let MAX_FILE_SIZE = 1 << 26;// 64M
 // let MAX_IMAGE_SIZE = 1 << 23; //8M
 let file_upload = multer({// let storage = multer.memoryStorage();
@@ -54,11 +57,7 @@ async function checkFileRequest(req, res, next) {
     } else {
         req.fileitems.file_saved = null;
         req.fileitems.file_selected_id = null;
-        return res.status(400).send({
-            status: 400,
-            message: 'File not exited or deleted',
-            data: null
-        });
+        return next(Utils.createError('File not exited or deleted', 400));
     }
 }
 async function checkFileRequestIfHave(req, res, next) {
@@ -101,8 +100,8 @@ async function postFiles(req, res, next) {
         }
         let current_user = null;
         let current_group = null;
-        let user = req.users.user_request;
-        let group = req.groups.group_request;
+        let user = userController.getCurrentUser(req);
+        let group = groupController.getGroupRequest(req);
         current_user = user ? {
             id: user._id,
             firstName: user.firstName,
@@ -132,12 +131,7 @@ async function postFiles(req, res, next) {
             next();
         }).catch(error => next(error));
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Upload Failed',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error, 500, 500, 'Upload Failed'));
     }
 }
 async function postFilesIfHave(req, res, next) {
@@ -151,8 +145,8 @@ async function postFilesIfHave(req, res, next) {
 
         let current_user = null;
         let current_group = null;
-        let user = req.users.user_request;
-        let group = req.groups.group_request;
+        let user = userController.getCurrentUser(req);
+        let group = groupController.getGroupRequest(req);
         current_user = user ? {
             id: user._id,
             firstName: user.firstName,
@@ -182,20 +176,15 @@ async function postFilesIfHave(req, res, next) {
             next();
         }).catch(error => next(error));
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Upload Failed',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error, 500, 500, 'Upload Failed'));
     }
 }
 async function postOrUpdateFile(req, res, next) {
     try {
         let file = req.fileitems.file_saved = null;
         let file_id = req.fileitems.file_selected_id;
-        let user = req.users.user_request;
-        let group = req.groups.group_request;
+        let user = userController.getCurrentUser(req);
+        let group = groupController.getGroupRequest(req);
         if (!req.file) {
             throw new Error("Input file null");
         }
@@ -223,20 +212,15 @@ async function postOrUpdateFile(req, res, next) {
         req.fileitems.file_selected_id = file ? file._id : null;
         return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Upload Failed',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error, 500, 500, 'Upload Failed'));
     }
 }
 async function postFile(req, res, next) {
     try {
         req.fileitems.file_saved = null;
         req.fileitems.file_selected_id = null;
-        let user = req.users.user_request;
-        let group = req.groups.group_request;
+        let user = userController.getCurrentUser(req);
+        let group = groupController.getGroupRequest(req);
         if (!req.file) {
             throw new Error("Input file null");
         }
@@ -262,20 +246,15 @@ async function postFile(req, res, next) {
         req.fileitems.file_selected_id = file ? file._id : null;
         return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Upload Failed',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error, 500, 500, 'Upload Failed'));
     }
 }
 async function postFileIfHave(req, res, next) {
     try {
         req.fileitems.file_saved = null;
         req.fileitems.file_selected_id = null;
-        let user = req.users.user_request;
-        let group = req.groups.group_request;
+        let user = userController.getCurrentUser(req);
+        let group = groupController.getGroupRequest(req);
         if (!req.file) {
             return next();
         }
@@ -301,19 +280,14 @@ async function postFileIfHave(req, res, next) {
         req.fileitems.file_selected_id = file ? file._id : null;
         return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Upload Failed',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error, 500, 500, 'Upload Failed'));
     }
 }
 async function updateFile(req, res, next) {
     try {
         let file = req.fileitems.file_saved;
-        let user = req.users.user_request;
-        let group = req.groups.group_request;
+        let user = userController.getCurrentUser(req);
+        let group = groupController.getGroupRequest(req);
         if (!req.file) {
             throw new Error("Input file null");
         }
@@ -337,12 +311,7 @@ async function updateFile(req, res, next) {
         req.fileitems.file_selected_id = file ? file._id : null;
         return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Update file Failed',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error, 500, 500, 'Update file Failed'));
     }
 }
 async function deleteFile(req, res, next) {//TODO: check permission delete file.
@@ -354,59 +323,33 @@ async function deleteFile(req, res, next) {//TODO: check permission delete file.
         req.fileitems.file_selected_id = file ? file._id : null;
         return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Not delete file',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error, 500, 500, 'Not delete file'));
     }
 }
-async function getInfoFile(req, res) {
+async function getInfoFile(req, res, next) {
     try {
         let  file = req.fileitems.file_saved;
-        return res.json({
-            code: 200,
-            message: 'Success',
-            data: file.getBasicInfo()
-        });
+        req.responses.data = Utils.createResponse(file.getBasicInfo());
+        return next();
     } catch (error) {
-        return res.status(400).json({
-            code: 400,
-            message: 'Not exit file.',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error, 400, 400, 'Not exit file'));
     }
 }
-async function getInfoFiles(req, res) {
+async function getInfoFiles(req, res, next) {
     try {
         let files = req.fileitems.files_saved;
         if (!files) {
-            return res.status(400).json({
-                code: 400,
-                message: 'Files not exited or deleted.',
-                data: null
-            });
+            return next(Utils.createError('Files not exited or deleted', 400));
         }
         let datas = files.filter(file => file.isDeleted === false).map(file => file.getBasicInfo());
-        return res.json({
-            code: 200,
-            message: 'Success',
-            length: datas.length,
-            data: datas,
-        });
+        req.responses.data = Utils.createResponse(datas);
+        return next();
     } catch (error) {
-        return res.status(400).json({
-            code: 400,
-            message: 'Not exit file.',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error, 400, 400, 'Not exit file'));
     }
 }
 
-async function getOrAttachFile(req, res, isAttach) {
+async function getOrAttachFile(req, res, next, isAttach) {
     try {
         let file = req.fileitems.file_saved;
         let readStream = fs.createReadStream(getLocalFilePath(file));
@@ -422,36 +365,23 @@ async function getOrAttachFile(req, res, isAttach) {
         }).on("close", () => {
             res.end();
         }).on("error", err => {
-            return res.status(500).send({
-                code: 500,
-                message: 'Not exit file.',
-                data: null
-            });
+            return next(Utils.createError(err, 500, 500, 'Not exit file'));
         });
     } catch (error) {
-        return res.status(400).send({
-            code: 400,
-            message: 'Not exit file.',
-            data: null
-        });
+        return next(Utils.createError(error, 400, 400, 'Not exit file'));
     }
 }
-async function getFile(req, res) {
-    return await getOrAttachFile(req, res, false);
+async function getFile(req, res, next) {
+    return await getOrAttachFile(req, res, next, false);
 }
-async function attachFile(req, res) {
-    return await getOrAttachFile(req, res, true);
+async function attachFile(req, res, next) {
+    return await getOrAttachFile(req, res, next, true);
 }
 async function getFiles(req, res, next) {
     try {
         let datas = await getAllFiles();
         if (datas) {
-            res.send({
-                code: 200,
-                message: 'Success',
-                length: datas.length,
-                data: datas
-            });
+            req.responses.data = Utils.createResponse(datas);
         }
         return next();
     } catch (error) {

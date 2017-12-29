@@ -19,10 +19,10 @@ async function getGroupByID(id) {
         return null;
     }
 }
-
 async function findGroup(req) {
-    if (req.groups.group_request) {
-        return req.groups.group_request;
+    let groupRequest = getGroupRequest(req);
+    if (groupRequest) {
+        return groupRequest;
     }
     let groupFind = null;
     if (req.params.groupID) {
@@ -39,19 +39,10 @@ async function findGroup(req) {
     }
     return null;
 }
-
-async function addMember(req, res) {
+async function addMember(req, res, next) {
     try {
-        let group = req.groups.group_request;
-        let userID = req.params.userID ? req.params.userID : req.body.userID;
-        let user = await UserControllers.getUserByID(userID);
-        if (!user) {
-            return res.status(400).send({
-                code: 400,
-                message: 'UserID Invalid',
-                data: null,
-            });
-        }
+        let group = getGroupRequest(req);
+        let user = UserControllers.getRequestUser(req);
         let typeMember = req.body.typeMember ? req.body.typeMember : 1;
         if (group.addMember(user, typeMember)) {
             group = await group.save();
@@ -60,69 +51,37 @@ async function addMember(req, res) {
         } else {
             throw new Error("Add member error");
         }
-        return res.status(200).send({
-            code: 200,
-            message: 'Success',
-            data: {
-                user_id: user._id,
-                group_id: group._id,
-            },
+        req.responses.data = Utils.createResponse({
+            user_id: user._id,
+            group_id: group._id,
         });
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
-async function removeMember(req, res) {
+async function removeMember(req, res, next) {
     try {
-        let group = req.groups.group_request;
-        let userID = req.params.userID ? req.params.userID : req.body.userID;
-        let user = await UserControllers.getUserByID(userID);
-        if (!user) {
-            return res.status(400).send({
-                code: 400,
-                message: 'UserID Invalid',
-                data: null,
-            });
-        }
+        let group = getGroupRequest(req);
+        let user = UserControllers.getRequestUser(req);
         if (group.removeMember(user)) {
             group = await group.save();
             user = await user.save();
             req.groups.group_request = group;
         }
-        return res.status(200).send({
-            code: 200,
-            message: 'Success',
-            data: {
-                user_id: user._id,
-                group_id: group._id,
-            },
+        req.responses.data = Utils.createResponse({
+            user_id: user._id,
+            group_id: group._id,
         });
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
-async function updateMember(req, res) {
+async function updateMember(req, res, next) {
     try {
-        let group = req.groups.group_request;
-        let userID = req.params.userID ? req.params.userID : req.body.userID;
-        let user = await UserControllers.getUserByID(userID);
-        if (!user) {
-            return res.status(400).send({
-                code: 400,
-                message: 'UserID Invalid',
-                data: null,
-            });
-        }
+        let group = getGroupRequest(req);
+        let user = UserControllers.getRequestUser(req);
         let typeMember = req.body.typeMember ? req.body.typeMember : 1;
         if (group.updateMember(user, typeMember)) {
             group = await group.save();
@@ -131,115 +90,62 @@ async function updateMember(req, res) {
         } else {
             throw new Error("UpdateMember Error, user is Remove");//
         }
-        return res.status(200).send({
-            code: 200,
-            message: 'Success',
-            data: {
-                user_id: user._id,
-                group_id: group._id
-            },
+        req.responses.data = Utils.createResponse({
+            user_id: user._id,
+            group_id: group._id,
         });
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
-async function getRequesteds(req, res) {
+async function getRequesteds(req, res, next) {
     try {
         //TODO: Check current user.
-        let group = req.groups.group_request;
+        let group = getGroupRequest(req);
         if (!group) throw new Error();
-        return res.send({
-            code: 200,
-            message: 'Success',
-            data: group.getRequesteds()
-        });
+        req.responses.data = Utils.createResponse(group.getRequesteds());
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
-async function removeRequested(req, res) {
+async function removeRequested(req, res, next) {
     try {
-        let group = req.groups.group_request;
-        if (!group) throw new Error();
-        let user = await UserControllers.findUser(req, false);
-        //req.users.user_request = user;
-        if (!user) {
-            return res.status(400).send({
-                code: 400,
-                message: 'UserID Invalid',
-                data: null,
-            });
-        }
+        let group = getGroupRequest(req);
+        let user = UserControllers.getRequestUser(req);
         if (group.removeRequested(user, true)) {
             group = await group.save();
             user = await user.save();
         }
-        return res.status(200).send({
-            code: 200,
-            message: 'Success',
-            data: {
-                user_id: user._id,
-                group_id: group._id,
-            },
+        req.responses.data = Utils.createResponse({
+            user_id: user._id,
+            group_id: group._id,
         });
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
-async function confirmRequested(req, res) {
+async function confirmRequested(req, res, next) {
     try {
-        let group = req.groups.group_request;
-        if (!group) throw new Error();
-        let user = await UserControllers.findUser(req, false); //req.users.user_request = user;
-        if (!user) {
-            return res.status(400).send({
-                code: 400,
-                message: 'UserID Invalid',
-                data: null,
-            });
-        }
+        let group = getGroupRequest(req);
+        let user = UserControllers.getRequestUser(req);
         if (group.confirmRequested(user)) {
             group = await group.save();
             user = await user.save();
         } else {
-            //throw new Error();
+            throw new Error('user not requested to group');
         }
-        return res.status(200).send({
-            code: 200,
-            message: 'Success',
-            data: {
-                user_id: user._id,
-                group_id: group._id,
-            },
+        req.responses.data = Utils.createResponse({
+            user_id: user._id,
+            group_id: group._id,
         });
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
 function updateGroupInfo(req, group, isCheckValidInput = true) {
     let message = [];
     if (isCheckValidInput) {
@@ -271,40 +177,23 @@ function updateGroupInfo(req, group, isCheckValidInput = true) {
     }
     return message;
 }
-
 async function postGroup(req, res, next) {
     try {
-        let userCreate = req.users.user_request;
-        if (!userCreate.isTeacher()) {
-            return res.status(400).send({
-                code: 400,
-                data: null,
-                error: 'Only teacher can create group.'
-            });
-        }
+        let userCreate = UserControllers.getCurrentUser(req);
         req.groups.group_request = null;
         let message = Group.validateInputInfo(req.body, true);
         if (!message || message.length > 0) {
-            return res.status(400).send({
-                code: 400,
-                message: message,
-                data: null,
-                error: 'Request Invalid'
-            });
+            return next(Utils.createError('Request Invalid', 400));
         }
         let group = new Group({
+            _id: Date.now(),
             name: req.body.name,
             isDeleted: false,
             dateCreated: new Date(),
         });
         message = updateGroupInfo(req, group, false);
         if (!message || message.length > 0) {
-            return res.status(400).send({
-                code: 400,
-                message: message,
-                data: null,
-                error: 'Request Invalid',
-            });
+            return next(Utils.createError('Request Invalid', 400));
         }
         if (!group.addAdminMember(userCreate)) {
             throw new Error("Add member to class error");
@@ -340,27 +229,13 @@ async function postGroup(req, res, next) {
             return next();
         }
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
 async function putGroup(req, res, next) {
     try {
-        let group = req.groups.group_request;
-        let user = await UserControllers.findUser(req);
-        if (!user || !group.isAdmin(user)) {
-            return res.status(400).send({
-                code: 400,
-                message: '',
-                data: null,
-                error: 'User not permit '
-            });
-        }
+        let group = getGroupRequest(req);
+        let user = UserControllers.getCurrentUser(req);
         let message = Group.validateInputInfo(req.body, false);
         if (message && message.length === 0) {
             message = updateGroupInfo(req, group, false);
@@ -371,142 +246,85 @@ async function putGroup(req, res, next) {
             }
         }
         //TODO update reference to this group.
-        return res.status(400).send({
-            code: 400,
-            message: message,
-            data: null,
-            error: 'Request Invalid',
-        });
+        return next(Utils.createError('Request Invalid', 400));
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
 async function deleteGroup(req, res, next) {
     try {
-        let group = req.groups.group_request;
-        if (!group) throw new Error();
-        let user = await UserControllers.findUser(req);
-        if (!user || !group.isAdmin(user)) {
-            return res.status(400).send({
-                code: 400,
-                message: '',
-                data: null,
-                error: 'User not permit '
-            });
-        }
+        let group = getGroupRequest(req);
         group.isDeleted = true;
         group = await group.save();
         //TODO: Remove all member in group.
         req.groups.group_request = group;
         return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
 async function getGroup(req, res, next) {
     try {
-        let group = req.groups.group_request;
-        if (!group) throw new Error();
-        return res.send({
-            code: 200,
-            message: 'Success',
-            data: group.getBasicInfo()
-        });
+        let group = getGroupRequest(req);
+        req.responses.data = Utils.createResponse(group.getBasicInfo());
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
 async function getProfileImageID(req, res, next) {
-    let group = req.groups.group_request;
-    req.fileitems.file_selected_id = group ? group.profileImageID : null;
+    let group = getGroupRequest(req);
+    if (group) {
+        req.fileitems.file_selected_id = group.profileImageID;
+    } else {
+        //TODO default gorupProfileID
+        req.fileitems.file_selected_id = null;
+    }
     return next();
 }
-
 async function putProfileImage(req, res, next) {
     try {
-        let group = req.groups.group_request;
+        let group = getGroupRequest(req);
         let currentFile = req.fileitems.file_saved;
         group.profileImageID = currentFile._id;
         group = await group.save();
         req.groups.group_request = group;
         return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
 async function getCoverImageID(req, res, next) {
-    req.fileitems.file_selected_id = req.groups.group_request ? req.groups.group_request.coverImageID : null;
+    let group = getGroupRequest(req);
+    if (group) {
+        req.fileitems.file_selected_id = group.coverImageID;
+    } else {
+        //TODO setGroupDefaultCoverImage
+        req.fileitems.file_selected_id = null;
+    }
     return next();
 }
-
-async function putCoverImage(req, res) {
+async function putCoverImage(req, res, next) {
     try {
-        let group = req.groups.group_request;
-        if (!group) throw new Error();
-        if (!req.fileitems.file_saved) {
-            throw new Error("Upload file Error");
-        }
+        let group = getGroupRequest(req);
         let currentFile = req.fileitems.file_saved;
-        group.coverImageID = String(currentFile._id);
+        group.coverImageID = currentFile._id;
         group = await group.save();
-        return res.json({
-            code: 200,
-            message: 'Success',
-            data: currentFile.getBasicInfo(),
-        });
+        req.responses.data = Utils.createResponse(currentFile.getBasicInfo());
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
-async function getMembers(req, res) {
+async function getMembers(req, res, next) {
     try {
-        let group = req.groups.group_request;
-        if (!group) throw new Error();
-        return res.send({
-            code: 200,
-            message: '',
-            data: group.getMembersInfo()
-        });
+        let group = getGroupRequest(req);
+        req.responses.data = Utils.createResponse(group.getMembersInfo());
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
 async function checkGroupRequest(req, res, next) {
     let group = await findGroup(req);
     if (group && !group.isDeleted) {
@@ -514,11 +332,7 @@ async function checkGroupRequest(req, res, next) {
         return next();
     } else {
         req.groups.group_request = null;
-        return res.status(400).send({
-            status: 400,
-            message: 'Group not exited or deleted',
-            data: null
-        });
+        return next(Utils.createError('Group not exited or deleted', 400));
     }
 }
 async function checkGroupRequestIfHave(req, res, next) {
@@ -530,26 +344,20 @@ async function checkGroupRequestIfHave(req, res, next) {
     }
     return next();
 }
-
-async function getGroups(req, res) {
+async function getGroups(req, res, next) {
     try {
         let groups = await Group.find({
             isDeleted: false,
         });
-        return res.json({
-            code: 200,
-            message: 'Success',
-            count: groups.length,
-            data: groups.map(group => group.getBasicInfo())
-        });
+        req.responses.data = Utils.createResponse(groups.map(group => group.getBasicInfo()));
+        return next();
     } catch (error) {
-        return res.status(500).send(error);
+        return next(Utils.createError(error));
     }
-};
-
+}
 async function getFiles(req, res, next) {
     try {
-        let group = req.groups.group_request;
+        let group = getGroupRequest(req);
         let files = await Files.find({
             isDeleted: false,
             'group.id': group._id,
@@ -557,57 +365,41 @@ async function getFiles(req, res, next) {
         req.fileitems.files_saved = files;
         return next();
     } catch (error) {
-        return res.status(500).json({
-            code: 500,
-            message: 'Server Error',
-            data: null
-        });
+        return next(Utils.createError(error));
     }
 }
-
-async function searchGroupByName(req, res) {
+async function searchGroupByName(req, res, next) {
     try {
         let key = req.query.groupname;
         if (!key) {
-            return res.status(400).json({code: 400, message: '', data: []});
+            return next(Utils.createError('', 400, 400, '', []));
         }
-        let groups = await Group.find({name: {$regex: key}});
-        return res.status(200).json({
-            code: 200,
-            message: '',
-            data: groups.map(group => group.getBasicInfo())
-        });
+        let groups = await Group.find({isDeleted: false, name: {$regex: key}});
+        req.responses.data = Utils.createResponse(groups.map(group => group.getBasicInfo()));
+        return next();
     } catch (error) {
-        return res.status(500).json({code: 500, message: '', data: []});
+        return next(Utils.createError(error, 400, 400, '', []));
     }
 }
-async function getAllPosts(req, res) {
+async function getAllPosts(req, res, next) {
     try {
         //TODO page paging : top, start...
-        let group = req.groups.group_request;
+        let group = getGroupRequest(req);
         let user = req.users.user_request;
         let postIDs = group.getPostIDs();
         let posts = await Post.find({isDeleted: false, _id: {$in: postIDs}});
         let datas = posts.map(post => post.getBasicInfo(user));
-        return res.status(200).json({
-            code: 200,
-            message: '',
-            data: datas,
-        });
+        req.responses.data = Utils.createResponse(datas);
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-async function getPosts(req, res) {
+async function getPosts(req, res, next) {
     try {
         //TODO page paging : top, start...
-        let group = req.groups.group_request;
-        let user = req.users.user_request;
+        let group = getGroupRequest(req);
+        let user = UserControllers.getRequestUser(req);
         let postIDs = group.getPostIDForUsers(user);
         let topicName = req.query.topicname;
         let posts;
@@ -617,55 +409,57 @@ async function getPosts(req, res) {
             posts = await Post.find({isDeleted: false, _id: {$in: postIDs}});
         }
         let datas = posts.map(post => post.getBasicInfo(user));
-        return res.status(200).json({
-            code: 200,
-            message: '',
-            length: datas.length,
-            data: datas,
-        });
+        req.responses.data = Utils.createResponse(datas);
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
-function getTopics(req, res) {
+function getTopics(req, res, next) {
     try {
-        let group = req.groups.group_request;
-        return res.status(200).json({
-            code: 200,
-            message: '',
-            data: group.getTopics(),
-        });
+        let group = getGroupRequest(req);
+        req.responses.data = Utils.createResponse(group.getTopics());
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-function checkMemberInGroup(req, res, next) {
-    let group = req.groups.group_request;
-    let user = req.users.user_request;
-    if (!group.isMember(user)) {
-        return res.status(400).send({
-            code: 400,
-            message: 'User not member',
-            data: null,
-            error: error.message
-        });
+function checkSystemOrMemberInGroupAccount(req, res, next) {
+    let group = getGroupRequest(req);
+    let user = UserControllers.getCurrentUser(req);
+    if (!group.isMember(user) && !user.isSystem()) {
+        return next(Utils.createError('User not permit', 400));
     }
     return next();
 }
-async function addTopic(req, res) {
+function checkMemberInGroup(req, res, next) {
+    let group = getGroupRequest(req);
+    let user = UserControllers.getCurrentUser(req);
+    if (!group.isMember(user)) {
+        return next(Utils.createError('User not member', 400));
+    }
+    return next();
+}
+function checkSystemOrAdminInGroupAccount(req, res, next) {
+    let group = getGroupRequest(req);
+    let user = UserControllers.getCurrentUser(req);
+    if (!group.isAdmin(user) && !user.isSystem()) {
+        return next(Utils.createError('User not permit', 400));
+    }
+    return next();
+}
+function checkAdminInGroupAccount(req, res, next) {
+    let group = getGroupRequest(req);
+    let user = UserControllers.getCurrentUser(req);
+    if (!group.isAdmin(user)) {
+        return next(Utils.createError('User not permit', 400));
+    }
+    return next();
+}
+async function addTopic(req, res, next) {
     try {
-        let group = req.groups.group_request;
+        let user = UserControllers.getCurrentUser(req);
+        let group = getGroupRequest(req);
         let topic = null;
         if (req.query.topicname) {
             topic = req.query.topicname;
@@ -674,33 +468,24 @@ async function addTopic(req, res) {
         } else if (req.body.topicname) {
             topic = req.body.topicname;
         }
-        if (!topic) return res.status(400).json({code: 400, error: 'Topic name not exit'});
+        if (!topic) return next(Utils.createError('Topic name not exit', 400));
         if (!group.addTopic(topic)) {
             throw new Error("Add topic error");
         } else {
             group = await group.save();
             req.groups.group_request = group;
         }
-        return res.status(200).json({
-            code: 200,
-            message: "",
-            data: group.getTopics(),
-        });
+        req.responses.data = Utils.createResponse(group.getTopics());
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-
-async function addTopics(req, res) {
+async function addTopics(req, res, next) {
     try {
-        let group = req.groups.group_request;
+        let group = getGroupRequest(req);
         if (!req.body.topics) {
-            return res.status(400).json({code: 400, error: 'Topic name not exit'})
+            return next(Utils.createError('Topic name not exit', 400));
         }
         let topics = Utils.getStringArray(req.body.topics);
         if (!group.addTopics(topics)) {
@@ -709,42 +494,34 @@ async function addTopics(req, res) {
             group = await group.save();
             req.groups.group_request = group;
         }
-        return res.status(200).json({
-            code: 200,
-            message: "",
-            data: group.getTopics(),
-        });
+        req.responses.data = Utils.createResponse(group.getTopics());
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
-async function removeTopic(req, res) {
+async function removeTopic(req, res, next) {
     try {
-        let group = req.groups.group_request;
+        let group = getGroupRequest(req);
         let topic = req.query.topicname;
-        if (!topic) return res.status(400).json({code: 200, error: 'Topic name not exit'})
+        if (!topic) return next(Utils.createError('Topic name not exit', 400));
         if (group.removeTopic(topic)) {
             group = await group.save();
             req.groups.group_request = group;
         }
-        return res.status(200).json({
-            code: 200,
-            message: "",
-            data: group.getTopics(),
-        });
+        req.responses.data = Utils.createResponse(group.getTopics());
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
+}
+
+function getGroupRequest(req) {
+    return req.groups.group_request;
+}
+
+function getCurrentGroup(req) {
+    return req.groups.group_request;
 }
 
 /*----------------EXPORT------------------ */
@@ -777,3 +554,8 @@ exports.addTopics = addTopics;
 exports.removeTopic = removeTopic;
 exports.getAllPosts = getAllPosts;
 exports.checkMemberInGroup = checkMemberInGroup;
+exports.getGroupRequest = getGroupRequest;
+exports.getCurrentGroup = getCurrentGroup;
+exports.checkSystemOrAdminInGroupAccount = checkSystemOrAdminInGroupAccount;
+exports.checkSystemOrMemberInGroupAccount = checkSystemOrMemberInGroupAccount;
+exports.checkAdminInGroupAccount = checkAdminInGroupAccount;

@@ -1,17 +1,17 @@
 let express = require('express');
-let UserController = require('../controllers/user');
+let userController = require('../controllers/user');
 let AnnouncementController = require('../controllers/announcement');
-
+let authController = require('../controllers/auth');
 let router = express.Router();
-
+//--------------------------API---------------------------//
+router.use(authController.isAuthenticated);
 router.route('/')
     .get(AnnouncementController.getAllAnnouncements, AnnouncementController.getAnnouncementsInfo)
-    .post(UserController.checkUserRequest, AnnouncementController.addAnnouncement, AnnouncementController.getAnnouncementInfo);
+    .post(userController.checkSystemOrTeacherAccount, AnnouncementController.addAnnouncement, AnnouncementController.getAnnouncementInfo);
 
+router.route('/info/:announcementID').get(AnnouncementController.checkAnnouncementRequest, AnnouncementController.getAnnouncementInfo);
+router.route('/update/:announcementID').put(userController.checkSystemOrTeacherAccount, AnnouncementController.checkAnnouncementRequest, AnnouncementController.updateAnnouncement, AnnouncementController.getAnnouncementInfo);
+router.route('/delete/:announcementID').delete(userController.checkSystemOrTeacherAccount, AnnouncementController.removeAnnouncement, AnnouncementController.getAnnouncementInfo);
 router.route('/filter').get(AnnouncementController.getAnnouncements, AnnouncementController.getAnnouncementsInfo);
-router.route('/:announcementID')
-    .get(AnnouncementController.checkAnnouncementRequest, AnnouncementController.getAnnouncementInfo)
-    .put(UserController.checkUserRequest, AnnouncementController.checkAnnouncementRequest, AnnouncementController.updateAnnouncement, AnnouncementController.getAnnouncementInfo)
-    .delete(UserController.checkUserRequest, AnnouncementController.removeAnnouncement, AnnouncementController.getAnnouncementInfo);
 
 module.exports = router;

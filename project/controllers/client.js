@@ -1,112 +1,98 @@
-var Client = require('../models/client');
-
-async function getCurrentUser(req) {
-    return req.user ? req.user : null;
-}
+let Client = require('../models/client');
+let Utils = require('../application/utils');
+let UserController = require('../controllers/user');
 
 async function findClient(req, user = null) {
     try {
-        if (!user) return null;
         let clientFind = null;
         let clientID = req.params.clientID ? req.params.clientID : req.body.clientID ? req.body.clientID : null;
         if (clientID) {
-            clientFind = await Client.findOne({
-                _id: clientID, userID: user._id
-            });
-            if (clientFind) {
-                return clientFind;
+            let findObject = {_id: clientID};
+            if (user) {
+                findObject['userID'] = user._id;
             }
-            return null;
-        }
-        if (req.body.clientname) {
-            clientFind = await Client.findOne({
-                name: req.body.clientname, userID: user._id
-            });
-            if (clientFind) {
-                return clientFind;
+            clientFind = await Client.findOne(findObject);
+        } else if (req.body.clientname) {
+            let findObject = {name: req.body.clientname};
+            if (user) {
+                findObject['userID'] = user._id;
             }
-            return null;
+            clientFind = await Client.findOne(findObject);
         }
+        if (clientFind) {
+            return clientFind;
+        }
+        return null;
     } catch (error) {
         return null;
     }
 }
-async function postClients(req, res) {
+async function postClient(req, res, next) {
     try {
-        let name = req.body.name;
-        let user = await getCurrentUser(req);
-        if (!name || !user) {
-            return res.status(400).json({ code: 400, message: 'Request Invalid' });
+        let user = UserController.getCurrentUser(req);
+        let client = await findClient(req);
+        let clientname = req.body.clientname;
+        if (!clientname) {
+            return next(Utils.createError('clientname not found', 400));
         }
-        let userID = user._id;
-        let client = await Client.find({ name: name, userId: userID });
-        if (client) {
-            if (client.isDeleted) {
-                client.isDeleted = false;
-            } else {
-                return res.status(400).json({ code: 400, message: 'Client name exited for user' });
-            }
-        } else {
+        let now = new Date();
+        if (!client) {
             client = new Client({
-                name: name,
-                userID: userID,
+                name: clientname,
+                userID: user._id,
                 isDeleted: false,
+                timeCreate: now,
             });
+        } else if (client.isDeleted && client.userID === user._id) {
+            client.isDeleted = false;
+            client.timeCreate = now;
+        } else {
+            return next(Utils.createError('Client name exited', 400));
         }
         client = await client.save();
-        return res.json({
-            code: 200,
-            message: 'New client added!',
-            data: client
-        });
+        req.responses.data = Utils.createResponse(client.getBasicInfo());
+        return next();
     } catch (error) {
-        return res.status(500).json({ code: 500, message: 'Server Error', data: null, error: error.message });
+        return next(Utils.createError(error));
     }
-};
+}
 
-async function getClient(req, res) {
-    let user = await getCurrentUser(req);
-    if (!user) {
-        return res.status(400).json({ code: 400, message: 'Request Invalid' });
-    }
+async function getClient(req, res, next) {
+    let user = UserController.getCurrentUser(req);
     let client = await findClient(req, user);
     if (client) {
-        return res.status(200).json({ code: 200, message: '', data: client });
+        req.responses.data = Utils.createResponse(client.getBasicInfo());
+        return next();
     }
-    return res.status(400).json({ code: 400, message: 'Not Found' });
+    return next(Utils.createError('Not Found', 400));
 }
-async function deleteClient(req, res) {
+async function deleteClient(req, res, next) {
     try {
-        let user = await getCurrentUser(req);
-        if (!user) {
-            return res.status(400).json({ code: 400, message: 'Request Invalid' });
-        }
+        let user = UserController.getCurrentUser(req);
         let client = await findClient(req, user);
         if (client) {
             client.isDeleted = true;
             client = await client.save();
-            return res.status(200).json({ code: 200, message: '', data: client });
+            req.responses.data = Utils.createResponse(client.getBasicInfo());
+            return next();
         }
-        return res.status(400).json({ code: 400, message: 'Not Found' });
-    } catch (err) {
-        return res.status(500).json({ code: 500, message: '' });
+        return next(Utils.createError('Not Found', 400));
+    } catch (error) {
+        return next(Utils.createError(error));
     }
 }
-async function getClients(req, res) {
+async function getClients(req, res, next) {
     try {
-        let user = await getCurrentUser(req);
-        if (!user) {
-            return res.status(400).json({ code: 400, message: 'Request Invalid' });
-        }
-        let userID = user._id;
-        let clients = await Client.find({ userId: userID });
-        return res.json({ code: 200, message: 'Success', data: clients });
+        let user = UserController.getCurrentUser(req);
+        let clients = await Client.find({ userID: user._id , isDeleted: false});
+        req.responses.data = Utils.createResponse(clients.map(client => client.getBasicInfo()));
+        return next();
     } catch (error) {
-        return res.status(500).json({ code: 500, message: 'Server Error', data: null, error: error.message });
+        return next(Utils.createError(error));
     }
 };
 
-exports.postClients = postClients;
+exports.postClient = postClient;
 exports.getClients = getClients;
 exports.getClient = getClient;
 exports.deleteClient = deleteClient;

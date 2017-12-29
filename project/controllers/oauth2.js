@@ -1,22 +1,11 @@
-let oauth2orize = require('oauth2orize')
+let oauth2orize = require('oauth2orize');
 let User = require('../models/user');
 let Client = require('../models/client');
 let Token = require('../models/token');
+let TokenController = require('../controllers/token');
 let Code = require('../models/code');
-
-function uid(len) {
-    let buf = [];
-    let chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let charlen = chars.length;
-    for (let i = 0; i < len; ++i) {
-        buf.push(chars[getRandomInt(0, charlen - 1)]);
-    }
-    return buf.join('');
-}
-
-function getRandomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+let CodeController = require('../controllers/code');
+let Utils = require('../application/utils');
 
 let server = oauth2orize.createServer();
 
@@ -24,71 +13,59 @@ server.serializeClient(function (client, callback) {
     return callback(null, client._id);
 });
 
-server.deserializeClient(function (id, callback) {
+server.deserializeClient(function (id, done) {
     Client.findOne({ _id: id }, function (err, client) {
-        if (err) {
-            return callback(err);
-        }
-        return callback(null, client);
+        if (err) { return done(err); }
+        return done(null, client);
     });
 });
 
-// Register authorization code grant type
-server.grant(oauth2orize.grant.code(function (client, redirectUri, user, ares, callback) {
-    // Create a new authorization code
-    let code = new Code({ 
-        value: uid(16),
-        clientId: client._id,
+server.grant(oauth2orize.grant.code(function (client, redirectUri, user, ares, done) {
+    // let code = new Code({
+    //     value: Utils.uid(16),
+    //     clientID: client._id,
+    //     redirectUri: redirectUri,
+    //     userID: user._id
+    // });
+    // let code = CodeController.createNewCode(user._id, client._id, redirectUri, client.scope);
+    let code = new Code({
+        _id: Date.now(),
+        value: Utils.uid(16),
+        clientID: client._id,
         redirectUri: redirectUri,
-        userId: user._id
+        userID: user._id,
+        scope: client.scope,
     });
-
-    // Save the auth code and check for errors
     code.save(function (err) {
         if (err) {
-            return callback(err);
+            return done(err);
         }
-
-        callback(null, code.value);
+        done(null, code.value);
     });
 }));
-
-// Exchange authorization codes for access tokens
-server.exchange(oauth2orize.exchange.code(function (client, code, redirectUri, callback) {
+server.exchange(oauth2orize.exchange.code(function (client, code, redirectUri, done) {
     Code.findOne({ value: code }, function (err, authCode) {
-        if (err) {
-            return callback(err);
-        }
-        if (authCode === undefined) {
-            return callback(null, false);
-        }
-        if (client._id.toString() !== authCode.clientId) {
-            return callback(null, false);
+        if (err) { return done(err); }
+        if (authCode === undefined) { return done(null, false); }
+        if (client._id !== authCode.clientID) {
+            return done(null, false);
         }
         if (redirectUri !== authCode.redirectUri) {
-            return callback(null, false);
+            return done(null, false);
         }
-
-        // Delete auth code now that it has been used
         authCode.remove(function (err) {
-            if (err) {
-                return callback(err);
-            }
-
-            // Create a new access token
+            if (err) { return done(err); }
             let token = new Token({
-                value: uid(256),
-                clientId: authCode.clientId,
-                userId: authCode.userId
+                _id: Date.now(),
+                value: Utils.uid(256),
+                clientID: authCode.clientID,
+                userID: authCode.userID,
+                scope: authCode.getScopeString(),
             });
-
-            // Save the access token and check for errors
+            // let token = TokenController.createNewToken(authCode);
             token.save(function (err) {
-                if (err) {
-                    return callback(err);
-                }
-
-                callback(null, token);
+                if (err) { return done(err); }
+                done(null, token);
             });
         });
     });
@@ -96,18 +73,14 @@ server.exchange(oauth2orize.exchange.code(function (client, code, redirectUri, c
 
 // User authorization endpoint
 exports.authorization = [
-    server.authorization(function (clientId, redirectUri, callback) {
-
-        Client.findOne({ id: clientId }, function (err, client) {
-            if (err) {
-                return callback(err);
-            }
-
-            return callback(null, client, redirectUri);
+    server.authorization(function (clientID, redirectUri, done) {
+        Client.findOne({ _id: clientID, isDeleted: false}, function (err, client) {
+            if (err) { return done(err); }
+            return done(null, client, redirectUri);
         });
     }),
     function (req, res) {
-        res.render('dialog', { transactionID: req.oauth2.transactionID, user: req.user, client: req.oauth2.client });
+        res.render('confirm', { transactionID: req.oauth2.transactionID, user: req.user, client: req.oauth2.client });
     }
 ];
 

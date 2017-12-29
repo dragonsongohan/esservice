@@ -12,6 +12,7 @@ let morgan = require('morgan');
 let cookieParser = require('cookie-parser');
 let userController = require('./controllers/user');
 
+let oauth2Router = require('./routes/oauth2');
 let apiRouter = require('./routes/api');
 let fileRouter = require('./routes/file');
 let groupRouter = require('./routes/group');
@@ -35,7 +36,7 @@ app.use(bodyParser.urlencoded({
 }));
 app.use(bodyParser.json());
 app.use(session({
-        secret: 'Super Secret Session Key',
+        secret: 'PMscnql6C7TCigaV',
         saveUninitialized: true,
         resave: true,
         // cookie: { maxAge: 10000, }
@@ -44,18 +45,25 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 /*------------------ROUTER--------------------------*/
-app.use('/apis', apiRouter);
+app.use('/oauth2', oauth2Router);
 app.use('/files', fileRouter);
-app.use('/users', userRouter);// userController.checkUserLogin, userRouter.Normal);
+app.use('/users', userRouter);
 app.use('/groups', groupRouter);
 app.use('/checks', checkRouter);
-app.use('/tasks', taskRouter);
-app.use('/test', testRouter);
 app.use('/posts', postRouter);
 app.use('/events', eventRouter);
 app.use('/announcements', announcementRouter);
 
+// app.use('/apis', apiRouter);
+// app.use('/tasks', taskRouter);
+app.use('/test', testRouter);
+
 app.use(Application.defaultHandler);
 app.use(Application.errorHandler);
+
+Application.events.announcements.on('NewAnnouncement', async function(announcement) {
+    console.log("new announcement");
+});
+
 app.listen(Application.manager.portRunning);
 console.log('Running at ' + Application.manager.portRunning);

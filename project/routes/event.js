@@ -5,21 +5,23 @@ let FileController = require('../controllers/fileitem');
 let Utils = require('../application/utils');
 let PostController = require('../controllers/post');
 let EventController = require('../controllers/event');
+let authController = require('../controllers/auth');
 let router = express.Router();
 
-router.route('/')
-    .get(EventController.getAllEvents, EventController.getEventsInfo)
-    .post(FileController.imageUpload, UserController.checkUserRequest, GroupController.checkGroupRequestIfHave,FileController.postFileIfHave, EventController.addEvent, EventController.getEventInfo);
-router.route('/groupevent/:groupEventID').get(EventController.getGroupEvent, EventController.getEventsInfo);
-router.route('/create').post(FileController.imageUpload, UserController.checkUserRequest, GroupController.checkGroupRequestIfHave,FileController.postFileIfHave, EventController.addEvents, EventController.getEventsInfo);
-router.route('/system').get(EventController.getSystemEvents, EventController.getEventsInfo);
-router.route('/user/:userID').get(UserController.checkUserRequest, EventController.getUserEvents, EventController.getEventsInfo);
-router.route('/group/:groupID').get(GroupController.checkGroupRequest, EventController.getGroupEvents, EventController.getEventsInfo);
-router.route('/filter').get(EventController.getEvents, EventController.getEventsInfo);
-router.route('/:eventID')
-    .get(EventController.checkEventRequest, EventController.getEventInfo)
-    .put(FileController.imageUpload, GroupController.checkGroupRequestIfHave, EventController.checkEventRequest, FileController.postFileIfHave, EventController.updateEvent, EventController.getEventInfo)
-    .delete(EventController.checkEventRequest, EventController.removeEvent, EventController.getEventInfo);
+router.use(authController.isAuthenticated);
+router.route('/').post(FileController.imageUpload, GroupController.checkGroupRequestIfHave,FileController.postFileIfHave, EventController.addEvent, EventController.getEventInfo)
+    .get(EventController.getAllEvents, EventController.filterEventsWithPermit, EventController.getEventsInfo);
+router.route('/groupevent/:groupEventID').get(EventController.getGroupEvent, EventController.filterEventsWithPermit, EventController.getEventsInfo);
+router.route('/system').get(EventController.getSystemEvents, EventController.filterEventsWithPermit, EventController.getEventsInfo);
+router.route('/user/:userID').get(UserController.checkSystemAccount, UserController.checkUserRequest, EventController.getUserEvents, EventController.filterEventsWithPermit, EventController.getEventsInfo);
+router.route('/user').get(UserController.putCurrentUser, EventController.getUserEvents, EventController.filterEventsWithPermit, EventController.getEventsInfo);
+router.route('/group/:groupID').get(GroupController.checkGroupRequest, EventController.getGroupEvents, EventController.filterEventsWithPermit, EventController.getEventsInfo);
+router.route('/group').get(EventController.getGroupEvents, EventController.filterEventsWithPermit, EventController.getEventsInfo);
+router.route('/filter').get(EventController.getEvents, EventController.filterEventsWithPermit, EventController.getEventsInfo);
 
-
+router.route('/create').post(FileController.imageUpload, GroupController.checkGroupRequestIfHave,FileController.postFileIfHave, EventController.addEvents, EventController.getEventsInfo);
+router.route('/info/:eventID').get(EventController.checkEventRequest, EventController.checkPermitForEvent, EventController.getEventInfo);
+router.route('/update/:eventID').put(FileController.imageUpload, EventController.checkEventRequest, EventController.checkPermitForEvent, GroupController.checkGroupRequestIfHave,  FileController.postFileIfHave, EventController.updateEvent, EventController.getEventInfo)
+router.route('/delete/:eventID').delete(EventController.checkEventRequest, EventController.checkPermitForEvent, EventController.removeEvent, EventController.getEventInfo);
+router.route('/import').post(EventController.importEvent, EventController.getEventsInfo);
 module.exports = router;

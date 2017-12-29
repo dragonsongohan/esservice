@@ -1,5 +1,5 @@
-let Users = require('../controllers/user');
-let GroupControllers = require('../controllers/group');
+let UserController = require('../controllers/user');
+let GroupController = require('../controllers/group');
 let Groups = require('../models/group');
 let EventItem = require('../models/event');
 let Utils = require('../application/utils');
@@ -9,16 +9,21 @@ async function getEventByID(id) {
         let eventID = Number(id);
         if (isNaN(eventID)) return null;
         return await EventItem.findOne({_id: eventID});
-    } catch(error) {
+    } catch (error) {
         return null;
     }
 }
-async function importEvent(req, res) {
-//TODO: ImportEvent
+
+async function importEvent(req, res, next) {
+    //TODO: ImportEvent
+    req.events.events_requested = [];
+    return next();
 }
+
 async function findEvent(req) {
-    if (req.events.event_requested) {
-        return req.events.event_requested;
+    let eventRequest = getEventRequest(req);
+    if (eventRequest) {
+        return eventRequest;
     }
     let id = null;
     if (req.query.eventID) {
@@ -42,125 +47,89 @@ async function checkEventRequest(req, res, next) {
             return next();
         } else {
             req.events.event_requested = null;
-            return res.status(400).send({
-                status: 400,
-                message: 'Event not exited or deleted',
-                data: null
-            });
+            return next(Utils.createError('Event not exited or deleted', 400));
         }
-    } catch(error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error
-        });
+    } catch (error) {
+        return next(Utils.createError(error));
     }
 }
 
-async function getEventsInfo(req, res) {
+async function getEventsInfo(req, res, next) {
     let events = req.events.events_requested;
-    return res.json({
-        code: 200,
-        message: 'Success',
-        length: events ? events.length : 0,
-        data: events ? events.map(event => event.getBasicInfo()) : [],
-    });
+    req.responses.data = Utils.createResponse(events ? events.map(event => event.getBasicInfo()) : []);
+    return next();
 }
+
 async function getEventInfo(req, res) {
-    let event = req.events.event_requested;
-    return res.json({
-        code: 200,
-        message: 'Success',
-        data: event.getBasicInfo(),
-    });
+    let event = getEventRequest(req);
+    req.responses.data = Utils.createResponse(event.getBasicInfo());
+    return next();
 }
+
 async function getAllEvents(req, res, next) {
     try {
-        let events = await EventItem.find({isDeleted: false});
-        req.events.events_requested = events ? events : [];
+        let currentUser = UserController.getCurrentUser(req);
+        let findObject = {isDeleted: false};
+        let events = await EventItem.find(findObject);
+        req.events.events_requested = events;
         return next();
-    } catch(error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error
-        });
+    } catch (error) {
+        return next(Utils.createError(error));
     }
 }
+
 async function getSystemEvents(req, res, next) {
     try {
         let events = await EventItem.find({isDeleted: false, context: 100});
         req.events.events_requested = events ? events : [];
         return next();
-    } catch(error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error
-        });
+    } catch (error) {
+        return next(Utils.createError(error));
     }
 }
+
 async function getGroupEvents(req, res, next) {
     try {
-        let group = req.groups.group_request;
-        let events = await EventItem.find({isDeleted: false, context: 10, 'contextData.id': group._id});
+        let group = GroupController.getGroupRequest(req);
+        let findObject = {isDeleted: false, context: 10};
+        if (group) {
+            findObject['contextData.id'] = group._id;
+        }
+        let events = await EventItem.find(findObject);
         req.events.events_requested = events ? events : [];
         return next();
-    } catch(error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error
-        });
+    } catch (error) {
+        return next(Utils.createError(error));
     }
 }
+
 async function getUserEvents(req, res, next) {
     try {
-        let user = req.users.user_request;
-        let events = await EventItem.find({isDeleted: false, 'userCreate.id': user._id});
+        let requestUser = UserController.getRequestUser(req);
+        let events = await EventItem.find({isDeleted: false, context: 1, 'userCreate.id': requestUser._id});
         req.events.events_requested = events ? events : [];
         return next();
-    } catch(error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error
-        });
+    } catch (error) {
+        return next(Utils.createError(error));
     }
 }
+
 async function getGroupEvent(req, res, next) {
     try {
         if (!req.params.groupEventID) {
-            return res.status(400).send({
-                code: 400,
-                message: 'GroupEventID not define',
-                data: null,
-            });
+            return next(Utils.createError('GroupEventID not define', 400));
         }
         let groupEventID = Number(req.params.groupEventID);
         if (isNaN(groupEventID)) {
-            return res.status(400).send({
-                code: 400,
-                message: 'GroupEventID invalid format',
-                data: null,
-            });
+            return next(Utils.createError('GroupEventID invalid format', 400));
         }
-
-        let events = await EventItem.find({isDeleted: false, groupEventID: groupEventID});
-        req.events.events_requested = events ? events : [];
+        let currentUser = UserController.getCurrentUser(req);
+        let findObject = {isDeleted: false, groupEventID: groupEventID};
+        let events = await EventItem.find(findObject);
+        req.events.events_requested = events;
         return next();
-    } catch(error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error
-        });
+    } catch (error) {
+        return next(Utils.createError(error));
     }
 }
 
@@ -189,24 +158,42 @@ async function getEvents(req, res, next) {
         let events = await EventItem.find(findObject);
         req.events.events_requested = events ? events : [];
         return next();
-    } catch(error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error
-        });
+    } catch (error) {
+        return next(Utils.createError(error));
     }
 }
+
 async function addEvent(req, res, next) {
     try {
-        let user = req.users.user_request;
-        let group = req.groups.group_request;
+        let user = UserController.getCurrentUser(req);
+        let group = GroupController.getGroupRequest(req);
+        let context = req.body.context ? Number(req.body.context) : 100;
+        if (!EventItem.isInvalidContext(context)) {
+            return next(Utils.createError('Request Invalid', 400, 400, 'context, contextID invalid'));
+        }
+        let contextData = null;
+        if (context === EventItem.getGroupContext()) {
+            if (!group) {
+                if (!group) {
+                    return next(Utils.createError('Request Invalid', 400, 400, 'contextData invalid for groupContext'));
+                }
+            }
+            if (!group.isMember(user)) {
+                return next(Utils.createError('User not permit', 400));
+            }
+            contextData = {
+                profileImageID: group.profileImageID,
+                memberCount: group.memberCount,
+                location: group.location,
+                about: group.about,
+                name: group.name,
+                id: group._id,
+            };
+        }
         let title = req.body.title;
         let content = req.body.content;
         let eventImageID = req.fileitems.file_selected_id ? String(req.fileitems.file_selected_id) : null;
         let location = req.body.location ? req.body.location : '';
-        let context = req.body.context ? Number(req.body.context) : 100;
         let isAllDay = req.body.isAllDay ? req.body.isAllDay === 'true' : false;
         let startTime = req.body.startTime ? Utils.parseDate(req.body.startTime) : null;
         let endTime = req.body.endTime ? Utils.parseDate(req.body.endTime) : null;
@@ -218,14 +205,16 @@ async function addEvent(req, res, next) {
             groupEventID = Date.now();
         }
         if (!title || !content || !location) {
-            return res.status(400).send({
-                code: 400,
-                message: 'Request Invalid',
-                data: null,
-                error: 'Data not exited'
-            });
+            return next(Utils.createError('Request Invalid', 400, 400, 'Data not exited'));
         }
         let now = new Date();
+        let userCreate = {
+            id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            profileImageID: user.profileImageID,
+            timeUpdate: now,
+        };
         let event = new EventItem({
             _id: now.getTime(),
             title: title,
@@ -236,59 +225,49 @@ async function addEvent(req, res, next) {
             startTime: startTime,
             endTime: endTime,
             groupEventID: groupEventID,
+            userCreate: userCreate,
+            context: context,
+            contextData: contextData,
         });
-        event.userCreate = {
-            id: user._id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            profileImageID: user.profileImageID,
-            timeUpdate: now,
-        };
-        if (event.setContext(context)) {//, contextID)){
-            if (event.isGroupContext()) {
-                event.contextData = group ? {
-                    profileImageID : group.profileImageID,
-                    memberCount : group.memberCount,
-                    location : group.location,
-                    about : group.about,
-                    name : group.name,
-                    id : group._id,
-                } : null;
-            } else if (event.isUserContext()) {
-                 // event.contextData = user ? user.getBasicInfo() : null;
-            } else {
-                event.contextData = null;
-            }
-        }
-        else {
-            return res.status(400).send({
-                code: 400,
-                message: 'Request Invalid',
-                data: null,
-                error: 'context, contextID invalid'
-            });
-        }
         event = await event.save();
         req.events.event_requested = event;
         return next();
-    } catch(error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error
-        });
+    } catch (error) {
+        return next(Utils.createError(error));
     }
 }
+
 async function addEvents(req, res, next) {
     try {
-        let user = req.users.user_request;
-        let group = req.groups.group_request;
+        let user = UserController.getCurrentUser(req);
+        let group = GroupController.getGroupRequest(req);
+        let context = req.body.context ? Number(req.body.context) : 100;
+        if (!EventItem.isInvalidContext(context)) {
+            return next(Utils.createError('Request Invalid', 400, 400, 'context, contextID invalid'));
+        }
+        let contextData = null;
+        if (context === EventItem.getGroupContext()) {
+            if (!group) {
+                if (!group) {
+                    return next(Utils.createError('Request Invalid', 400, 400, 'contextData invalid for groupContext'));
+                }
+            }
+            if (!group.isMember(user)) {
+                return next(Utils.createError('User not permit', 400));
+            }
+            contextData = {
+                profileImageID: group.profileImageID,
+                memberCount: group.memberCount,
+                location: group.location,
+                about: group.about,
+                name: group.name,
+                id: group._id,
+            };
+        }
         let title = req.body.title;
         let content = req.body.content;
         let eventImageID = req.fileitems.file_selected_id ? String(req.fileitems.file_selected_id) : null;
         let location = req.body.location ? req.body.location : '';
-        let context = req.body.context ? Number(req.body.context) : 100;
         let isAllDay = req.body.isAllDay ? req.body.isAllDay === 'true' : false;
         let periods = Utils.getPeriodArray(req.body.periods);
         let groupEventID = null;
@@ -299,14 +278,9 @@ async function addEvents(req, res, next) {
             groupEventID = Date.now();
         }
         if (!title || !content || !location) {
-            return res.status(400).send({
-                code: 400,
-                message: 'Request Invalid',
-                data: null,
-                error: 'Data not exited'
-            });
+            return next(Utils.createError('Request Invalid', 400, 400, 'Data not exited'));
         }
-        let now = Date.now();
+        let now = new Date();
         let userCreate = {
             id: user._id,
             firstName: user.firstName,
@@ -314,17 +288,6 @@ async function addEvents(req, res, next) {
             profileImageID: user.profileImageID,
             timeUpdate: now,
         };
-        let contextData = null;
-        if (context === EventItem.getGroupContext()) {
-            contextData = group ? {
-                profileImageID : group.profileImageID,
-                memberCount : group.memberCount,
-                location : group.location,
-                about : group.about,
-                name : group.name,
-                id : group._id,
-            } : null;
-        }
         let createEventItem = function (_id, _startTime, _endTime) {
             let eventItem = new EventItem({
                 _id: _id,
@@ -351,57 +314,39 @@ async function addEvents(req, res, next) {
             req.events.events_requested = eventSaveds;
             next();
         }).catch(error => next(error));
-    } catch(error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error
-        });
+    } catch (error) {
+        return next(Utils.createError(error));
     }
 }
+
 async function removeEvent(req, res, next) {
     try {
-        let event = await findEvent(req);
+        let event = getEventRequest(req);
+        let currentUser = UserController.getCurrentUser(req);
+        if (!currentUser.isSystem()
+            || (currentUser._id !== event.userCreate.id)) {
+            return next(Utils.createError('User not permit', 400));
+        }
+        event.isDeleted = true;
+        event = await event.save();
         req.events.event_requested = event;
-        if (!event) {
-            return res.status(400).send({
-                code: 400,
-                message: 'Event Existed',
-                data: null
-            });
-        }
-        if (event.isDeleted) {
-            return res.status(400).send({
-                code: 400,
-                message: 'Event deleted.',
-                data: null
-            });
-        } else {
-            event.isDeleted = true;
-            event = await event.save();
-            req.events.event_requested = event;
-        }
         return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
+
 async function updateEvent(req, res, next) {
     try {
-        let event = req.events.event_requested;
-        let group = req.groups.group_request;
+        let event = getEventRequest(req);
+        let currentUser = UserController.getCurrentUser(req);
+        if (currentUser._id !== event.userCreate.id) {
+            return next(Utils.createError('User not permit', 400));
+        }
         let title = req.body.title;
         let content = req.body.content;
         let eventImageID = req.fileitems.file_selected_id ? String(req.fileitems.file_selected_id) : null;
         let location = req.body.location ? req.body.location : null;
-        let context = req.body.context;
-        // let contextID = req.body.contextID;
         let isAllDay = req.body.isAllDay;
         let startTime = req.body.startTime ? Utils.parseDate(req.body.startTime) : null;
         let endTime = req.body.endTime ? Utils.parseDate(req.body.endTime) : null;
@@ -413,33 +358,50 @@ async function updateEvent(req, res, next) {
         if (isAllDay) event.isAllDay = isAllDay === 'true';
         if (startTime) event.startTime = startTime;
         if (endTime) event.endTime = endTime;
-        if (event.setContext(context)) {//, contextID)){
-            if (event.isGroupContext()) {
-                event.contextData = group ? {
-                    profileImageID : group.profileImageID,
-                    memberCount : group.memberCount,
-                    location : group.location,
-                    about : group.about,
-                    name : group.name,
-                    id : group._id,
-                } : null;
-            } else if (event.isUserContext()) {
-                // event.contextData = user ? user.getBasicInfo() : null;
-            } else {
-                event.contextData = null;
-            }
-        }
         event = await event.save();
         req.events.event_requested = event;
         return next();
-    } catch(error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error
+    } catch (error) {
+        return next(Utils.createError(error));
+    }
+}
+
+function checkPermitForEvent(req, res, next) {
+    let currentUser = UserController.getCurrentUser(req);
+    let eventRequest = getEventRequest(req);
+    if (!currentUser.isSystem()) {
+        if (eventRequest.context === 1) {
+            if (eventRequest.userCreate.id === currentUser._id) {
+                return next();
+            }
+            return next(Utils.createError('User not permit', 400));
+        }
+    }
+    return next();
+}
+
+function filterEventsWithPermit(req, res, next) {
+    let currentUser = UserController.getCurrentUser(req);
+    let events = getEventsRequest(req);
+    if (!events) events = [];
+    if (!currentUser.isSystem()) {
+        events = events.filter(event => {
+            if (event.context === 1) {
+                return event.userCreate.id === currentUser._id;
+            }
+            return true;
         });
     }
+    req.events.events_requested = events;
+    return next();
+}
+
+function getEventRequest(req) {
+    return req.events.event_requested;
+}
+
+function getEventsRequest(req) {
+    return req.events.events_requested;
 }
 
 // exports.getEvent = getEvent;
@@ -457,5 +419,6 @@ exports.getEventsInfo = getEventsInfo;
 exports.getEventInfo = getEventInfo;
 exports.getAllEvents = getAllEvents;
 exports.getGroupEvent = getGroupEvent;
-
-
+exports.getEventRequest = getEventRequest;
+exports.checkPermitForEvent = checkPermitForEvent;
+exports.filterEventsWithPermit = filterEventsWithPermit;

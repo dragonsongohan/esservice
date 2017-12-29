@@ -1,3 +1,9 @@
+let config = require('config');
+let userEvents = require('../events/users');
+let groupsEvents = require('../events/groups');
+let postEvents = require('../events/posts');
+let announcementEvents = require('../events/announcements');
+
 module.exports = {
     manager: require('./manager'),
     utils: require('./utils'),
@@ -54,5 +60,11 @@ module.exports = {
             data: data,
             error: details,
         })
-    }
+    },
+    events: {
+        users: userEvents,
+        groups: groupsEvents,
+        posts: postEvents,
+        announcements: announcementEvents,
+    },
 };

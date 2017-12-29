@@ -1,4 +1,6 @@
 let bcrypt = require('bcrypt-nodejs');
+let debugLogger = require('./logger').Debug;
+let infoLogger = require('./logger').Info;
 let chars = "abcdefjhijklmnopqrstuvwxyzABCDEFJHIJKLMNOPQRSTUVWXYZ0123456789+=-_";
 let numbers = "0123456789";
 let random = Math.random;
@@ -7,6 +9,20 @@ let isLog = true;
 
 let phoneReg = /^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/;
 let emailReg = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+
+function uid(len) {
+    let buf = [];
+    let chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let charlen = chars.length;
+    for (let i = 0; i < len; ++i) {
+        buf.push(chars[getRandomInt(0, charlen - 1)]);
+    }
+    return buf.join('');
+}
+
+function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
 function validatePhoneNumber(phone, isRequired = false) {
     return phone ? (phoneReg.test(phone) || phoneReg.test(Number(phone))): !isRequired;
@@ -148,6 +164,18 @@ function createResponse(data = null, message = 'Success', logicCode = 200) {
         error: null,
     };
 }
+
+function LogE(tag, detail) {
+    console.error(exportDate(new Date()) + ':[' + tag + ']' + detail);
+    // debugLogger.error('[' + tag + ']' + detail);
+}
+
+function LogI(tag, detail) {
+    console.log(exportDate(new Date()) + ':[' + tag + ']' + detail);
+    // debugLogger.info('[' + tag + ']' + detail);
+}
+
+
 exports.createError = createError;
 exports.nextInt = nextInt;
 exports.randomString = randomString;
@@ -166,3 +194,7 @@ exports.validateStringLength = validateStringLength;
 exports.exportDate = exportDate;
 exports.isNumber = isNumber;
 exports.createResponse = createResponse;
+exports.uid = uid;
+exports.getRandomInt = getRandomInt;
+exports.LogE = LogE;
+exports.LogI = LogI;

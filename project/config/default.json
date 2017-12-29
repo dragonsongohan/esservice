@@ -1,0 +1,7 @@
+{
+    "logs": {
+        "level": "debug2",
+        "handleExceptions": false,
+        "config": "default"
+    }
+}

@@ -363,6 +363,11 @@ function setBlockComment(isBlockComment) {
     this.options.isBlockComment = isBlockComment;
 }
 
+function isBlockComment() {
+    if (!this.options) this.options = {};
+    return this.options.isBlockComment;
+}
+
 function setBasicPost() {
     this.postType = 10;
 }
@@ -407,5 +412,6 @@ PostSchema.methods.setBasicPost = setBasicPost;
 PostSchema.methods.setAssigmentPost = setAssigmentPost;
 PostSchema.methods.isBasicPost = isBasicPost;
 PostSchema.methods.isAssigmentPost = isAssigmentPost;
+PostSchema.methods.isBlockComment = isBlockComment;
 
 module.exports = mongoose.model('Post', PostSchema);

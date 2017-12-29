@@ -1,5 +1,6 @@
 let PostItem = require('../models/post');
-let Groups = require('../controllers/group');
+let GroupControllers = require('../controllers/group');
+let UserController = require('../controllers/user');
 let Utils = require('../application/utils');
 
 async function getPostByID(id) {
@@ -13,8 +14,9 @@ async function getPostByID(id) {
 }
 
 async function findPost(req) {
-    if (req.posts.post_requested) {
-        return req.posts.post_requested;
+    let postRequest = getPostRequest(req);
+    if (postRequest) {
+        return postRequest;
     }
     let id = null;
     if (req.query.postID) {
@@ -37,48 +39,31 @@ async function checkPostRequest(req, res, next) {
         return next();
     } else {
         req.posts.post_requested = null;
-        return res.status(400).send({
-            status: 400,
-            message: 'Post not exited or deleted',
-            data: null
-        });
+        return next(Utils.createError('Post not exited or deleted', 400));
     }
 }
 
-function getPost(req, res) {
+function getPost(req, res, next) {
     try {
-        let post = req.posts.post_requested;
-        let user = req.users.user_request;
-        return res.send({
-            code: 200,
-            message: 'Success',
-            data: post.getBasicInfo(user),
-        });
+        let post = getPostRequest(req);
+        let user = UserController.getCurrentUser(req);
+        req.responses.data = Utils.createResponse(post.getBasicInfo(user));
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
 
 async function addPost(req, res, next) {
     try {
-        let group = req.groups.group_request;
-        let user = req.users.user_request;
+        let group = GroupControllers.getGroupRequest(req);
+        let user = UserController.getCurrentUser(req);
         let currentFiles = req.fileitems.files_saved;//req.fileitems.file_saved;
         let title = req.body.title;
         let content = req.body.content;
         let topic = req.body.topic;
         if (!title || !content || !topic) {
-            return res.status(400).send({
-                code: 400,
-                message: 'Request Invalid',
-                data: null,
-                error: error.message
-            });
+            return next(Utils.createError('Request Invalid', 400));
         }
         let isShow = req.body.isShow ? req.body.isShow === 'true' : false;
         let isSchedule = req.body.isSchedule ? req.body.isSchedule === 'true' : false;
@@ -110,72 +95,29 @@ async function addPost(req, res, next) {
         req.posts.post_requested = post;
         return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error
-        });
+        return next(Utils.createError(error));
     }
 }
 
 async function deletePost(req, res, next) {
     try {
-        let user = req.users.user_request;
-        let post = await findPost(req);
+        let user = UserController.getCurrentUser(req);
+        let post = getPostRequest(req);
+        post.isDeleted = true;
+        post = await post.save();
         req.posts.post_requested = post;
-        if (post.userCreate._id !== user._id) {
-            if (!user.isTeacher()) {//TODO: Check current group.
-                return res.status(400).send({
-                    code: 400,
-                    message: 'Request Invalid. Only owner post or teacher can delete',
-                    data: null,
-                    error: 'Permit invalid'
-                });
-            }
-        }
-        if (!post) {
-            return res.status(400).send({
-                code: 400,
-                message: 'Post Not Existed',
-                data: null
-            });
-        }
-        if (post.isDeleted) {
-            return res.status(400).send({
-                code: 400,
-                message: 'Post deleted.',
-                data: null
-            });
-        } else {
-            post.isDeleted = true;
-            post = await post.save();
-            req.posts.post_requested = post
-        }
         return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
 
-async function updatePost(req, res) {
+async function updatePost(req, res, next) {
     try {
-        let user = req.users.user_request;
-        let post = req.posts.post_requested;
+        let user = UserController.getCurrentUser(req);
+        let post = getPostRequest(req);
         if (post.userCreate._id !== user._id) {
-            if (!user.isTeacher()) {//TODO check current group
-                return res.status(400).send({
-                    code: 400,
-                    message: 'Request Invalid. Only owner post or teacher can editable.',
-                    data: null,
-                    error: 'Permit invalid'
-                });
-            }
+            return next(Utils.createError('User not permit', 400));
         }
         let title = req.body.title;
         let content = req.body.content;
@@ -192,33 +134,21 @@ async function updatePost(req, res) {
         }
         post = await post.save();
         req.posts.post_requested = post;
-        return res.send({
-            code: 200,
-            message: 'Success',
-            data: post.getBasicInfo(user),
-        });
+        req.responses.data = Utils.createResponse(post.getBasicInfo(user));
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
 
-async function addComment(req, res) {
+async function addComment(req, res, next) {
     try {
-        let post = req.posts.post_requested;
-        let user = req.users.user_request;
+        let post = getPostRequest(req);
+        let user = UserController.getCurrentUser(req);
         let file = req.fileitems.file_saved;
         let content = req.body.content;
         if (!content) {
-            return res.status(400).send({
-                code: 400,
-                message: 'Request Invalid',
-                error: 'Content not found'
-            });
+            return next(Utils.createError('Request Invalid', 400, 400, 'Content not found'));
         }
         let comment = post.addComment(user, content, file);
         let data = null;
@@ -238,49 +168,33 @@ async function addComment(req, res) {
         } else {
             throw new Error("Add Comment error");
         }
-        return res.send({
-            code: 200,
-            message: 'Success',
-            data: data,
-        });
+        req.responses.data = Utils.createResponse(data);
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
 
-async function getComments(req, res) {//bulk comments with index.
+async function getComments(req, res, next) {//bulk comments with index.
     try {
-        let post = req.posts.post_requested;
-        return res.send({
-            code: 200,
-            message: 'Success',
-            data: {
-                post: {
-                    postID: post._id,
-                    groupID: post.group.id,
-                    userCreateID: post.userCreate.id,
-                },
-                comments: post.getComments(),
+        let post = getPostRequest(req);
+        req.responses.data = Utils.createResponse({
+            post: {
+                postID: post._id,
+                groupID: post.group.id,
+                userCreateID: post.userCreate.id,
             },
+            comments: post.getComments(),
         });
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
 
-async function deleteComment(req, res) {
+async function deleteComment(req, res, next) {
     try {
-        let post = req.posts.post_requested;
+        let post = getPostRequest(req);
         let commentID = null;
         if (req.query.commentID) {
             commentID = req.query.commentID;
@@ -290,11 +204,7 @@ async function deleteComment(req, res) {
             commentID = req.body.commentID;
         }
         if (!commentID) {
-            return res.status(400).send({
-                code: 400,
-                message: 'Request Invalid',
-                error: 'CommentID not found'
-            });
+            return next(Utils.createError('Request Invalid', 400, 400, 'CommentID not found'));
         }
         let comment = post.deleteComment(Number(commentID));
         let data = null;
@@ -312,31 +222,19 @@ async function deleteComment(req, res) {
                 timeUpdate: Utils.exportDate(comment.timeUpdate),
             }
         } else {
-            return res.status(400).send({
-                code: 400,
-                message: 'Request Invalid',
-                error: 'CommentID not exited'
-            });
+            return next(Utils.createError('Request Invalid', 400, 400, 'CommentID not exited'));
         }
-        return res.json({
-            code: 200,
-            message: 'Success',
-            data: data,
-        });
+        req.responses.data = Utils.createResponse(data);
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
 
-async function updateComment(req, res) {
+async function updateComment(req, res, next) {
     try {
-        let post = req.posts.post_requested;
-        let user = req.users.user_request;
+        let post = getPostRequest(req);
+        let currentUser = UserController.getCurrentUser(req);
         let file = req.fileitems.file_saved;
         let content = req.body.content;
         let commentID = null;
@@ -348,15 +246,14 @@ async function updateComment(req, res) {
             commentID = req.body.commentID;
         }
         if (!commentID) {
-            return res.status(400).send({
-                code: 400,
-                message: 'Request Invalid',
-                error: 'CommentID not found'
-            });
+            return next(Utils.createError('Request Invalid', 400, 400, 'CommentID not found'));
         }
         let comment = post.updateComment(Number(commentID), content, file);
         let data = null;
         if (comment) {
+            if (comment.userID !== currentUser._id) {
+                return next(Utils.createError('Request Invalid', 400, 400, 'Only owner comment can editable.'));
+            }
             post = await post.save();
             req.posts.post_requested = post;
             data = {
@@ -372,26 +269,18 @@ async function updateComment(req, res) {
         } else {
             throw new Error("Update Comment error");
         }
-        return res.send({
-            code: 200,
-            message: 'Success',
-            data: data,
-        });
+        req.responses.data = Utils.createResponse(data);
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
 
-async function getPostsInTopic(req, res) {
+async function getPostsInTopic(req, res, next) {
     try {
         let datas = [];
-        let group = req.groups.group_request;
-        let user = req.users.user_request;
+        let group = GroupControllers.getGroupRequest(req);
+        let user = UserController.getCurrentUser(req);
         let topicName = req.query.topicname;
         if (!topicName) {
             datas = group.getTopics();
@@ -403,52 +292,35 @@ async function getPostsInTopic(req, res) {
             });
             datas = posts.map(post => post.getBasicInfo(user));
         }
-        res.json({
-            code: 200,
-            message: 'Success',
-            data: datas
-        });
+        req.responses.data = Utils.createResponse(datas);
+        return next();
     } catch (error) {
-        res.status(500).json({
-            code: 500,
-            message: 'Server Error',
-            error: error.message,
-        });
+        return next(Utils.createError(error));
     }
 }
 
-async function getLikes(req, res) {
+async function getLikes(req, res, next) {
     try {
-        let post = req.posts.post_requested;
-        let user = req.users.user_request;
-        return res.send({
-            code: 200,
-            message: 'Success',
-            data: {
-                post: {
-                    postID: post._id,
-                    groupID: post.group.id,
-                    userCreateID: post.userCreate.id,
-                },
-                likes: post.getLikes(),
-                // isUserLiked: post.isUserLiked(user),//check req.query.user.
+        let post = getPostRequest(req);
+        req.responses.data = Utils.createResponse({
+            post: {
+                postID: post._id,
+                groupID: post.group.id,
+                userCreateID: post.userCreate.id,
             },
+            likes: post.getLikes(),
         });
+        return next();
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
 
 async function addLike(req, res, next) {
     try {
-        let post = req.posts.post_requested;
-        let user = req.users.user_request;
-        if (post.addLike(user)) {
+        let post = getPostRequest(req);
+        let currentUser = UserController.getCurrentUser(req);
+        if (post.addLike(currentUser)) {
             post = await post.save();
             req.posts.post_requested = post;
             return next();
@@ -456,19 +328,14 @@ async function addLike(req, res, next) {
             throw new Error("Can't add like to post");
         }
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
 
 async function removeLike(req, res, next) {
     try {
-        let post = req.posts.post_requested;
-        let user = req.users.user_request;
+        let post = getPostRequest(req);
+        let user = UserController.getCurrentUser(req);
         if (post.removeLike(user)) {
             post = await post.save();
             req.posts.post_requested = post;
@@ -477,12 +344,7 @@ async function removeLike(req, res, next) {
             throw new Error("Can't add like to post");
         }
     } catch (error) {
-        return res.status(500).send({
-            code: 500,
-            message: 'Server Error',
-            data: null,
-            error: error.message
-        });
+        return next(Utils.createError(error));
     }
 }
 
@@ -528,6 +390,31 @@ function createNewPost(user, group, title, content, topic, files = null) {
     return post;
 }
 
+function putGroupRequest(req, res, next) {
+    let post = getPostRequest(req);
+    req.param.groupID = post.group.id;
+    return next();
+}
+
+function checkPermitForUser(req, res, next) {
+    let currentUser = UserController.getCurrentUser(req);
+    if (currentUser.isSystem()) {
+        return next();
+    }
+    let post = getPostRequest(req);
+    let group = GroupControllers.getGroupRequest(req);
+    let postIDs = group.getPostIDForUsers(currentUser);
+    let postFind = postIDs.find(post._id);
+    if (postFind) {
+        return next();
+    }
+    return next(Utils.createError('User not permit', 400));
+}
+
+function getPostRequest(req) {
+    return req.posts.post_requested;
+}
+
 //------------------EXPORT---------------------
 exports.checkPostRequest = checkPostRequest;
 exports.addPost = addPost;
@@ -546,6 +433,9 @@ exports.getPostsInTopic = getPostsInTopic;
 exports.getLikes = getLikes;
 exports.addLike = addLike;
 exports.removeLike = removeLike;
+
+exports.putGroupRequest = putGroupRequest;
+exports.checkPermitForUser = checkPermitForUser;
 
 
 

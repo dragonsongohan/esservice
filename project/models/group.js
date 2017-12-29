@@ -201,7 +201,7 @@ function getArrayLanguage(languageString) {
 }
 function getBasicInfo() {
     return {
-        id: this.id,
+        id: this._id,
         name: this.name,
         about: this.about,
         location: this.location,
@@ -310,6 +310,10 @@ function removeRequested(user, isUpdateReference = false) {
     return user.removeClassRequest.call(user, this, false) ? user : null;
 }
 function confirmRequested(user, isUpdateReference = false) {
+    let requestedUser = this.requesteds.find(u => u.isRemoved === false && u._id === user._id);
+    if (!requestedUser) {
+        return null;
+    }
     if (!addMember.call(this, user)) {
         return null;
     }
