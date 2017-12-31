@@ -18,7 +18,7 @@ router.route('/comment/:postID')
     .put(fileController.fileUpload, fileController.postFileIfHave, postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, postController.checkPermitForUser, postController.updateComment)
     .delete(postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, groupController.checkAdminInGroupAccount, postController.deleteComment);
 
-router.route('info/:postID').get(postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, postController.checkPermitForUser, postController.getPost);
-router.route('delete/:postID').delete(postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, groupController.checkAdminInGroupAccount, postController.deletePost, postController.getPost);
-router.route('update/:postID').put(fileController.arrayFileUpload, postController.checkPostRequest, fileController.postFilesIfHave, postController.checkPermitForUser, postController.updatePost, postController.getPost);
+router.route('/info/:postID').get(postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, postController.checkPermitForUser, postController.getPost);
+router.route('/delete/:postID').delete(postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, groupController.checkAdminInGroupAccount, postController.deletePost, postController.getPost);
+router.route('/update/:postID').put(fileController.arrayFileUpload, postController.checkPostRequest, postController.putGroupRequest, groupController.checkGroupRequest, fileController.postFilesIfHave, postController.checkPermitForUser, postController.updatePost, postController.getPost);
 module.exports = router;

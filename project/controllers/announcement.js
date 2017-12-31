@@ -121,7 +121,7 @@ async function removeAnnouncement(req, res, next) {
         let announcement = await findAnnouncement(req);
         req.announcements.announcement_requested = announcement;
         if (!announcement) {
-            return next(Utils.createError('Announcement Existed', 400));
+            return next(Utils.createError('Announcement not existed', 400));
         }
         if (announcement.isDeleted) {
             return next(Utils.createError('Announcement deleted', 400));

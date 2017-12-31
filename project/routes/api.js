@@ -50,11 +50,10 @@ function createSystemUser(username, password, firstName, lastName) {
     return user;
 }
 
-
 router.route('/token')
     .get(authController.basicAuthenticated, userController.login)
     .post(authController.localAuthenticated, userController.login)
     .delete(authController.isAuthenticated, TokenController.deleteToken);
-router.route('/logout').delete(authController.isAuthenticated, userController.logout);
+router.route('/logout').post(authController.isAuthenticated, userController.logout);
 router.route('/tokens').delete(authController.isAuthenticated, TokenController.deleteTokens);
 module.exports = router;

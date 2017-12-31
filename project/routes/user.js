@@ -35,7 +35,9 @@ router.route('/files')
     .get(userController.putCurrentUser, userController.getFiles, fileController.getInfoFiles)
     .post(userController.putCurrentUser, fileController.arrayFileUpload, fileController.postFiles, fileController.getInfoFiles);
 router.route('/classs/:userID').get(userController.checkSystemAccount, userController.checkUserRequest, userController.getClasss);
-router.route('/classs').get(userController.putCurrentUser, userController.getClasss);
+router.route('/classs')
+    .get(userController.putCurrentUser, userController.getClasss)
+    .delete(groupController.checkGroupRequest , groupController.checkMemberInGroup, userController.removeFromClass);
 router.route('/friends/:userID')
     .get(userController.checkUserRequest, userController.getFriends)
     .delete(userController.checkUserRequest, userController.removeFriend);
@@ -50,7 +52,6 @@ router.route('/requested/:userID')
 router.route('/requested').get(userController.putCurrentUser, userController.getRequesteds);
 router.route('/posts/:userID').get(userController.checkSystemAccount, userController.checkUserRequest, userController.getPosts);
 router.route('/posts').get(userController.putCurrentUser, userController.getPosts);
-router.route('/classs/:groupID').delete(groupController.checkGroupRequest , groupController.checkMemberInGroup, userController.removeFromClass);
 router.route('/classrequest/:groupID')
     .post(groupController.checkGroupRequest ,userController.addClassRequest)
     .delete(groupController.checkGroupRequest, userController.removeClassRequest);

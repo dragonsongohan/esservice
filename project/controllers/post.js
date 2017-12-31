@@ -117,7 +117,7 @@ async function updatePost(req, res, next) {
     try {
         let user = UserController.getCurrentUser(req);
         let post = getPostRequest(req);
-        if (post.userCreate._id !== user._id) {
+        if (post.userCreate.id !== user._id) {
             return next(Utils.createError('User not permit', 400));
         }
         let title = req.body.title;
@@ -179,13 +179,15 @@ async function addComment(req, res, next) {
 async function getComments(req, res, next) {//bulk comments with index.
     try {
         let post = getPostRequest(req);
+        let comments = post.getComments();
         req.responses.data = Utils.createResponse({
             post: {
                 postID: post._id,
                 groupID: post.group.id,
                 userCreateID: post.userCreate.id,
             },
-            comments: post.getComments(),
+            length: comments.length,
+            comments: comments,
         });
         return next();
     } catch (error) {
@@ -393,7 +395,7 @@ function createNewPost(user, group, title, content, topic, files = null) {
 
 function putGroupRequest(req, res, next) {
     let post = getPostRequest(req);
-    req.param.groupID = post.group.id;
+    req.body.groupID = post.group.id;
     return next();
 }
 
@@ -405,7 +407,7 @@ function checkPermitForUser(req, res, next) {
     let post = getPostRequest(req);
     let group = GroupControllers.getGroupRequest(req);
     let postIDs = group.getPostIDForUsers(currentUser);
-    let postFind = postIDs.find(post._id);
+    let postFind = postIDs.find(p => p === post._id);
     if (postFind) {
         return next();
     }

@@ -368,7 +368,7 @@ async function getClasss(req, res, next) {
 
 async function removeFromClass(req, res, next) {
     try {
-        let user = getRequestUser(req);
+        let user = getCurrentUser(req);
         let group = GroupController.getGroupRequest(req);
         if (user.removeFromClass(group)) {
             group = await group.save();

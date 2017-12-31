@@ -60,7 +60,7 @@ async function getEventsInfo(req, res, next) {
     return next();
 }
 
-async function getEventInfo(req, res) {
+async function getEventInfo(req, res, next) {
     let event = getEventRequest(req);
     req.responses.data = Utils.createResponse(event.getBasicInfo());
     return next();
