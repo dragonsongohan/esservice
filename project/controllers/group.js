@@ -19,6 +19,7 @@ async function getGroupByID(id) {
         return null;
     }
 }
+
 async function findGroup(req) {
     let groupRequest = getGroupRequest(req);
     if (groupRequest) {
@@ -39,6 +40,7 @@ async function findGroup(req) {
     }
     return null;
 }
+
 async function addMember(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -60,6 +62,7 @@ async function addMember(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function removeMember(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -78,6 +81,7 @@ async function removeMember(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function updateMember(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -99,6 +103,7 @@ async function updateMember(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function getRequesteds(req, res, next) {
     try {
         //TODO: Check current user.
@@ -110,6 +115,7 @@ async function getRequesteds(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function removeRequested(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -127,6 +133,7 @@ async function removeRequested(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function confirmRequested(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -146,6 +153,7 @@ async function confirmRequested(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 function updateGroupInfo(req, group, isCheckValidInput = true) {
     let message = [];
     if (isCheckValidInput) {
@@ -177,6 +185,7 @@ function updateGroupInfo(req, group, isCheckValidInput = true) {
     }
     return message;
 }
+
 async function postGroup(req, res, next) {
     try {
         let userCreate = UserControllers.getCurrentUser(req);
@@ -232,6 +241,64 @@ async function postGroup(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
+async function postGroups(req, res, next) {
+    try {
+        let defaultConfig = req.body.default ? req.body.default : {
+            about: "Default",
+            location: "Default location"
+        } ;
+        let datas = req.body.data;
+        if (!datas) datas = [];
+        let options = req.body.options ? req.body.options : {
+            ignoreError: true
+        };
+        let groups = [];
+        req.groups.groups_request = groups;
+        if (!datas || !Array.isArray(datas) || datas.length <= 0) {
+            return next();
+        }
+        let userCreate = UserControllers.getCurrentUser(req);
+        let now = new Date();
+        let groupID = now.getTime();
+        let ignoreError = (options.ignoreError === false || options.ignoreError === "false") ? false : true;
+        for (let index = 0; index < datas.length; index++) {
+            let data = datas[index];
+            let message = Group.validateInputInfo(data, true);
+            if (!message || message.length > 0) {
+                if (!ignoreError) {
+                    return next(Utils.createError('Request Invalid', 400, 400, message));
+                }
+                continue;
+            }
+            let about = data.about ? data.about : defaultConfig.about ? defaultConfig.about : "";
+            let location = data.location ? data.location : defaultConfig.location ? defaultConfig.location : "";
+            let group = new Group({
+                _id: groupID++,
+                name: data.name,
+                about: about,
+                location: location,
+                isDeleted: false,
+                dateCreated: now,
+            });
+            if (!group.addAdminMember(userCreate)) {
+                continue;
+            }
+            groups.push(group);
+        }
+        Promise.all(groups.map(group => group.save())).then(groups => {
+            req.groups.groups_request = groups;
+        }).catch(error => {
+            req.groups.groups_request = [];
+        });
+        userCreate = await userCreate.save();
+        req.users.user_request = userCreate;
+        return next();
+    } catch (error) {
+        return next(Utils.createError(error));
+    }
+}
+
 async function putGroup(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -251,6 +318,7 @@ async function putGroup(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function deleteGroup(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -263,6 +331,7 @@ async function deleteGroup(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function getGroup(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -272,6 +341,18 @@ async function getGroup(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
+function getGroupsInfo(req, res, next) {
+    try {
+        let groups = req.groups.groups_request;
+        if (!groups) groups = [];
+        req.responses.data = Utils.createResponse(groups.map(group => group.getBasicInfo()));
+        return next();
+    } catch (error) {
+        return res.status(500).send(error);
+    }
+};
+
 async function getProfileImageID(req, res, next) {
     let group = getGroupRequest(req);
     if (group) {
@@ -282,6 +363,7 @@ async function getProfileImageID(req, res, next) {
     }
     return next();
 }
+
 async function putProfileImage(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -294,6 +376,7 @@ async function putProfileImage(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function getCoverImageID(req, res, next) {
     let group = getGroupRequest(req);
     if (group) {
@@ -304,6 +387,7 @@ async function getCoverImageID(req, res, next) {
     }
     return next();
 }
+
 async function putCoverImage(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -316,6 +400,7 @@ async function putCoverImage(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function getMembers(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -325,6 +410,7 @@ async function getMembers(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function checkGroupRequest(req, res, next) {
     let group = await findGroup(req);
     if (group && !group.isDeleted) {
@@ -335,6 +421,7 @@ async function checkGroupRequest(req, res, next) {
         return next(Utils.createError('Group not exited or deleted', 400));
     }
 }
+
 async function checkGroupRequestIfHave(req, res, next) {
     let group = await findGroup(req);
     if (group && !group.isDeleted) {
@@ -344,6 +431,7 @@ async function checkGroupRequestIfHave(req, res, next) {
     }
     return next();
 }
+
 async function getGroups(req, res, next) {
     try {
         let groups = await Group.find({
@@ -355,6 +443,7 @@ async function getGroups(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function getFiles(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -368,6 +457,7 @@ async function getFiles(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function searchGroupByName(req, res, next) {
     try {
         let key = req.query.groupname;
@@ -381,6 +471,7 @@ async function searchGroupByName(req, res, next) {
         return next(Utils.createError(error, 400, 400, '', []));
     }
 }
+
 async function getAllPosts(req, res, next) {
     try {
         //TODO page paging : top, start...
@@ -395,18 +486,28 @@ async function getAllPosts(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function getPosts(req, res, next) {
     try {
-        //TODO page paging : top, start...
+        //TODO page paging : top, start...//skip, limit
+        let skip = Number(req.query.skip);
+        let limit = Number(req.query.limit);
+        let options = {};
+        if (!isNaN(skip)) {
+            options.skip = skip;
+        }
+        if (!isNaN(limit)) {
+            options.limit = limit;
+        }
         let group = getGroupRequest(req);
         let user = UserControllers.getRequestUser(req);
         let postIDs = group.getPostIDForUsers(user);
         let topicName = req.query.topicname;
         let posts;
         if (topicName) {
-            posts = await Post.find({isDeleted: false, _id: {$in: postIDs}, topics: {$elemMatch: {_id: topicName}}});
+            posts = await Post.find({isDeleted: false, _id: {$in: postIDs}, topics: {$elemMatch: {_id: topicName}}}, {}, options);
         } else {
-            posts = await Post.find({isDeleted: false, _id: {$in: postIDs}});
+            posts = await Post.find({isDeleted: false, _id: {$in: postIDs}}, {}, options);
         }
         let datas = posts.map(post => post.getBasicInfo(user));
         req.responses.data = Utils.createResponse(datas);
@@ -415,6 +516,7 @@ async function getPosts(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 function getTopics(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -424,6 +526,7 @@ function getTopics(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 function checkSystemOrMemberInGroupAccount(req, res, next) {
     let group = getGroupRequest(req);
     let user = UserControllers.getCurrentUser(req);
@@ -432,6 +535,7 @@ function checkSystemOrMemberInGroupAccount(req, res, next) {
     }
     return next();
 }
+
 function checkMemberInGroup(req, res, next) {
     let group = getGroupRequest(req);
     let user = UserControllers.getCurrentUser(req);
@@ -440,6 +544,7 @@ function checkMemberInGroup(req, res, next) {
     }
     return next();
 }
+
 function checkSystemOrAdminInGroupAccount(req, res, next) {
     let group = getGroupRequest(req);
     let user = UserControllers.getCurrentUser(req);
@@ -448,6 +553,7 @@ function checkSystemOrAdminInGroupAccount(req, res, next) {
     }
     return next();
 }
+
 function checkAdminInGroupAccount(req, res, next) {
     let group = getGroupRequest(req);
     let user = UserControllers.getCurrentUser(req);
@@ -456,6 +562,7 @@ function checkAdminInGroupAccount(req, res, next) {
     }
     return next();
 }
+
 async function addTopic(req, res, next) {
     try {
         let user = UserControllers.getCurrentUser(req);
@@ -481,6 +588,7 @@ async function addTopic(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function addTopics(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -500,6 +608,7 @@ async function addTopics(req, res, next) {
         return next(Utils.createError(error));
     }
 }
+
 async function removeTopic(req, res, next) {
     try {
         let group = getGroupRequest(req);
@@ -559,3 +668,5 @@ exports.getCurrentGroup = getCurrentGroup;
 exports.checkSystemOrAdminInGroupAccount = checkSystemOrAdminInGroupAccount;
 exports.checkSystemOrMemberInGroupAccount = checkSystemOrMemberInGroupAccount;
 exports.checkAdminInGroupAccount = checkAdminInGroupAccount;
+exports.postGroups = postGroups;
+exports.getGroupsInfo = getGroupsInfo;

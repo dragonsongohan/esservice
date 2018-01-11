@@ -9,6 +9,10 @@ let ConfigController = require('../controllers/config');
 let Configs = require('../models/config');
 let User = require('../models/user');
 
+router.route('/upload').post(fileController.fileUpload, fileController.postFile, fileController.putContentBody, function(req, res) {
+    res.send(req.body);
+});
+// router.route('/upload').post(fileController.fileUpload, fileController.postFile, fileController.getInfoFile);
 router.route('/init')
     .get(async function (req, res, next) {
         try {

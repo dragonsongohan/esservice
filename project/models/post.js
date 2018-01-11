@@ -239,6 +239,9 @@ function getComments(top = -1) {
         }));
 }
 function addComment(user, content, file = null) {
+    if (!this.options || !this.options.isBlockComment) {
+        return null;
+    }
     let now = new Date();
     let comment = {
         _id: now.getTime(),
@@ -383,6 +386,19 @@ function isBasicPost() {
 function isAssigmentPost() {
     return this.postType === 100;
 }
+const allowString = "aăâbcdđeêfghjklmnoôơpqrstuưvxyzAĂÂBCDĐEÊFGHJKLMNOÔƠPQRSTUƯVXYZ0123456789";
+function validateContent(content) {
+    if (!content) {
+        return false;
+    }
+    let contents = content.split('');
+    for (let index = 0; index < contents.length; index++) {
+        if (allowString.indexOf(contents[index]) < 0) {
+            return false;
+        }
+    }
+    return true;
+}
 
 PostSchema.methods.getBasicInfo = getBasicInfo;
 PostSchema.statics.getNewID = getNewID;
@@ -413,5 +429,7 @@ PostSchema.methods.setAssigmentPost = setAssigmentPost;
 PostSchema.methods.isBasicPost = isBasicPost;
 PostSchema.methods.isAssigmentPost = isAssigmentPost;
 PostSchema.methods.isBlockComment = isBlockComment;
+
+PostSchema.statics.validateContent = validateContent;
 
 module.exports = mongoose.model('Post', PostSchema);

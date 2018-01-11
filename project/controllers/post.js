@@ -61,6 +61,9 @@ async function addPost(req, res, next) {
         let currentFiles = req.fileitems.files_saved;//req.fileitems.file_saved;
         let title = req.body.title;
         let content = req.body.content;
+        if (!PostItem.validateContent(content)) {
+            return next(Utils.createError('Request Invalid', 400));
+        }
         let topic = req.body.topic;
         if (!title || !content || !topic) {
             return next(Utils.createError('Request Invalid', 400));
@@ -71,6 +74,7 @@ async function addPost(req, res, next) {
         let startTime = req.body.startTime ? Utils.parseDate(req.body.startTime) : null;
         let endTime = req.body.endTime ? Utils.parseDate(req.body.endTime) : null;
         let members = req.body.members ? Utils.getNumberArray(req.body.members) : [];
+        let isBlockComment = (req.body.isBlockComment === true || req.body.isBlockComment === "true");
         members.push(user._id);
         let options = {
             isShow: isShow,
@@ -82,7 +86,7 @@ async function addPost(req, res, next) {
             },
             members: members,
         };
-        let post = createNewPost(user, group, title, content, topic, currentFiles);
+        let post = createNewPost(user, group, title, content, topic, isBlockComment, currentFiles);
         if (scopeType == 100) {
             post.setAssigmentPost();
         } else {
@@ -122,7 +126,7 @@ async function updatePost(req, res, next) {
         }
         let title = req.body.title;
         let content = req.body.content;
-        let isBlockComment = req.body.isBlockComment ? req.body.isBlockComment === 'true' : false;
+        let isBlockComment = (req.body.isBlockComment === true ||req.body.isBlockComment === 'true');
         let topics = req.body.topics;
         if (title) post.title = title;
         if (content) post.content = content;
@@ -351,7 +355,7 @@ async function removeLike(req, res, next) {
     }
 }
 
-function createNewPost(user, group, title, content, topic, files = null) {
+function createNewPost(user, group, title, content, topic, isBlockComment, files = null) {
     if (!user || !group) return null;
     let now = new Date();
     let post = new PostItem({
@@ -371,10 +375,13 @@ function createNewPost(user, group, title, content, topic, files = null) {
             profileImageID: group.profileImageID,
             timeUpdate: now,
         },
+        options: {
+            isBlockComment: is
+        },
         topics: [],
         comments: [],
         likes: [],
-        options: {isBlockComment: false},
+        options: {isBlockComment: isBlockComment},
         files: [],
         countComments: 0,
         countLikes: 0,

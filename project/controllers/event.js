@@ -3,6 +3,7 @@ let GroupController = require('../controllers/group');
 let Groups = require('../models/group');
 let EventItem = require('../models/event');
 let Utils = require('../application/utils');
+let ics = require('ics');
 
 async function getEventByID(id) {
     try {
@@ -11,6 +12,40 @@ async function getEventByID(id) {
         return await EventItem.findOne({_id: eventID});
     } catch (error) {
         return null;
+    }
+}
+
+async function exportEvent(req, res, next) {
+    try{
+        let event = req.events.event_requested;
+        let eventInfo = event.getBasicInfo();
+        let randomString = Utils.randomString(8) + "_" + event._id;
+        let eventStart = new Date(eventInfo.startTime);
+        let eventEnd = new Date(eventInfo.endTime);
+        ics.createEvent({
+            title: eventInfo.title,
+            description: eventInfo.content,
+            location: eventInfo.location,
+            start: [eventStart.getFullYear(), eventStart.getMonth() + 1, eventStart.getDate(), eventStart.getHours(), eventStart.getMinutes()],
+            end: [eventEnd.getFullYear(), eventEnd.getMonth() + 1, eventEnd.getDate(), eventEnd.getHours(), eventEnd.getMinutes()]
+        }, (error, value) => {
+            if (error) {
+                return next(Utils.createError(error), 400);
+            } else {
+                req.fileitems.fileOutput = {
+                    content: value,
+                    name: randomString + ".ics",
+                };
+                return next();
+                // let length = Buffer.byteLength(value);
+                // res.setHeader('Content-Type', 'application/octet-stream');
+                // res.setHeader('Content-Length', length);
+                // res.setHeader("Content-Disposition", "filename=\"" + randomString + ".ics\"");
+                // res.send(value);
+            }
+        });
+    } catch (error){
+        return next(Utils.createError(error));
     }
 }
 
@@ -319,6 +354,88 @@ async function addEvents(req, res, next) {
     }
 }
 
+async function importEvents(req, res, next) {
+    try {
+        let user = UserController.getCurrentUser(req);
+        let group = GroupController.getGroupRequest(req);
+        let context = req.body.context ? Number(req.body.context) : 100;
+        if (!EventItem.isInvalidContext(context)) {
+            return next(Utils.createError('Request Invalid', 400, 400, 'context, contextID invalid'));
+        }
+        let contextData = null;
+        if (context === EventItem.getGroupContext()) {
+            if (!group) {
+                if (!group) {
+                    return next(Utils.createError('Request Invalid', 400, 400, 'contextData invalid for groupContext'));
+                }
+            }
+            if (!group.isMember(user)) {
+                return next(Utils.createError('User not permit', 400));
+            }
+            contextData = {
+                profileImageID: group.profileImageID,
+                memberCount: group.memberCount,
+                location: group.location,
+                about: group.about,
+                name: group.name,
+                id: group._id,
+            };
+        }
+        let title = req.body.title;
+        let content = req.body.content;
+        let eventImageID = null;
+        let location = req.body.location ? req.body.location : '';
+        let isAllDay = req.body.isAllDay ? req.body.isAllDay === 'true' : false;
+        let periods = Utils.getPeriodArray(req.body.periods);
+        let groupEventID = null;
+        if (req.body.groupEventID) {
+            let n = Number(req.body.groupEventID);
+            groupEventID = isNaN(n) ? Date.now() : n;
+        } else {
+            groupEventID = Date.now();
+        }
+        if (!title || !content || !location) {
+            return next(Utils.createError('Request Invalid', 400, 400, 'Data not exited'));
+        }
+        let now = new Date();
+        let userCreate = {
+            id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            profileImageID: user.profileImageID,
+            timeUpdate: now,
+        };
+        let createEventItem = function (_id, _startTime, _endTime) {
+            let eventItem = new EventItem({
+                _id: _id,
+                title: title,
+                content: content,
+                eventImageID: eventImageID,
+                location: location,
+                isAllDay: isAllDay,
+                startTime: _startTime,
+                endTime: _endTime,
+                userCreate: userCreate,
+                context: context,
+                contextData: contextData,
+                groupEventID: groupEventID,
+            });
+            return eventItem;
+        };
+        let events = periods.map(period => {
+            if (!period.startTime || !period.endTime) return null;
+            return createEventItem(now++, period.startTime, period.endTime);
+        }).filter(item => item !== null);
+        Promise.all(events.map(event => event.save())
+        ).then(eventSaveds => {
+            req.events.events_requested = eventSaveds;
+            next();
+        }).catch(error => next(error));
+    } catch (error) {
+        return next(Utils.createError(error));
+    }
+}
+
 async function removeEvent(req, res, next) {
     try {
         let event = getEventRequest(req);
@@ -422,3 +539,5 @@ exports.getGroupEvent = getGroupEvent;
 exports.getEventRequest = getEventRequest;
 exports.checkPermitForEvent = checkPermitForEvent;
 exports.filterEventsWithPermit = filterEventsWithPermit;
+exports.importEvents = importEvents;
+exports.exportEvent = exportEvent;

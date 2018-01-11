@@ -56,7 +56,8 @@ router.route('/classrequest/:groupID')
     .post(groupController.checkGroupRequest ,userController.addClassRequest)
     .delete(groupController.checkGroupRequest, userController.removeClassRequest);
 router.route('/classrequest').get(userController.getClassRequests);
-router.route('/import').post(userController.checkSystemAccount, userController.postUsers, userController.getUsers);
+router.route('/import').post(userController.checkSystemAccount, userController.postUsers, userController.getUsersInfo);
+router.route('/importfile').post(userController.checkSystemAccount, fileController.fileUpload, fileController.postFile, fileController.putContentBody, userController.postUsers, userController.getUsersInfo);
 router.route('/search').get(userController.searchUserByName);
 router.route('/all').get(userController.checkSystemAccount, userController.getUsers);
 //--------------------------------

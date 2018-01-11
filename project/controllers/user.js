@@ -108,13 +108,104 @@ async function findUser(req, isFindWithPhoneAndEmail = true) {
 
 async function postUsers(req, res, next) {
     try {
-        //TODO: postUsers not complete
+        let defaultConfig = req.body.default ? req.body.default : {
+            password: {
+                text: "default",
+                equalfieldName: "username"
+            },
+            firstName: "NONE",
+            lastname: "NONE",
+            gender: 0,
+            birthday: null,
+            typeuser: 0,
+        };
+        let datas = req.body.data ? req.body.data : [];
+        let options = req.body.options ? req.body.options : {
+            ignoreError: true
+        };
+        let users = [];
+        req.users.users_request = users;
+        if (!datas || !Array.isArray(datas) || datas.length <= 0) {
+            return next();
+        }
+        let now = new Date();
+        let userID = now.getTime();
+        let ignoreError = (options.ignoreError === false || options.ignoreError === "false") ? false : true;
+        if (!defaultConfig.password) defaultConfig.password = {
+            text: "default",
+            equalfieldName: "username"
+        };
+        let passwordText = defaultConfig.password.text ? defaultConfig.password.text : "default";
+        let passwordEqualFieldName = defaultConfig.equalfieldName ? defaultConfig.equalfieldName : "username";
+        let getDefaultPassword = function (data) {
+            if (!data) return passwordText;
+            let password = data[passwordEqualFieldName];
+            return password ? password : passwordText;
+        };
+        for (let index = 0; index < datas.length; index++) {
+            let data = datas[index];
+            let username = data.username;
+            if (!data.password) {
+                data.password = getDefaultPassword(data);
+            }
+            if (!data.firstName) {
+                data.firstName = defaultConfig.firstName ? defaultConfig.firstName : username;
+            }
+            if (!data.lastName) {
+                data.lastName = defaultConfig.lastName ? defaultConfig.lastName : username;
+            }
+            if (!data.gender) {
+                data.gender = defaultConfig.gender ? defaultConfig.gender : 0;
+            }
+            if (!data.birthday) {
+                data.birthday = defaultConfig.birthday ? defaultConfig.birthday : null;
+            }
+            if (!data.typeuser) {
+                data.typeuser = defaultConfig.typeuser ? defaultConfig.typeuser : 0;
+            }
+            let message = User.validateInputInfo(data, true);
+            if (!message || message.length > 0) {
+                if (!ignoreError) {
+                    if (!ignoreError) {
+                        return next(Utils.createError('Request Invalid', 400, 400, message));
+                    }
+                }
+                continue;
+            }
+            let user = new User({
+                _id: userID++,
+                username: data.username,
+                password: data.password,
+                firstName: data.firstName,
+                lastName: data.lastName,
+                gender: data.gender,
+                birthday: data.birthday,
+                typeuser: data.typeuser,
+                timeCreate: now,
+                email: data.email,
+                phone: data.phone,
+                isDeleted: false,
+            });
+            try {
+                user = await user.save();
+                users.push(user);
+            } catch(error) {
+                if (!ignoreError) {
+                    throw error;
+                }
+            }
+        }
+        req.users.users_request = users;
+        // Promise.all(users.map(user => user.save())).then(users => {
+        //     req.users.users_request = users;
+        // }).catch(error => {
+        //     req.users.users_request = [];
+        // });
         return next();
     } catch (error) {
         return next(Utils.createError(error));
     }
 }
-
 async function updateUserInfo(req, user, isCheckValidInput = true) {
     let message = [];
     if (isCheckValidInput) {
@@ -662,7 +753,15 @@ async function getUsers(req, res, next) {
         return next(Utils.createError(error));
     }
 }
-
+function getUsersInfo(req, res, next) {
+    try {
+        let users = req.users.users_request ? req.users.users_request : [];
+        req.responses.data = Utils.createResponse(users.map(user => user.getBasicInfo()));
+        return next();
+    } catch (error) {
+        return next(Utils.createError(error));
+    }
+}
 async function getFiles(req, res, next) {
     try {
         let user = getRequestUser(req);
@@ -693,6 +792,15 @@ async function searchUserByName(req, res, next) {
 
 async function getPosts(req, res, next) {
     try {
+        let skip = Number(req.query.skip);
+        let limit = Number(req.query.limit);
+        let options = {};
+        if (!isNaN(skip)) {
+            options.skip = skip;
+        }
+        if (!isNaN(limit)) {
+            options.limit = limit;
+        }
         let user = getRequestUser(req);
         let groups = await Groups.find({_id: {$in: user.getClasssID()}});
         let postIDs = groups.reduce((postIDs, group) => {
@@ -701,9 +809,9 @@ async function getPosts(req, res, next) {
         let topicName = req.query.topicname;
         let posts;
         if (topicName) {
-            posts = await Posts.find({isDeleted: false, _id: {$in: postIDs}, topics: {$elemMatch: {_id: topicName}}});
+            posts = await Posts.find({isDeleted: false, _id: {$in: postIDs}, topics: {$elemMatch: {_id: topicName}}}, {}, options);
         } else {
-            posts = await Posts.find({isDeleted: false, _id: {$in: postIDs}});
+            posts = await Posts.find({isDeleted: false, _id: {$in: postIDs}}, {}, options);
         }
         let datas = posts.map(post => post.getBasicInfo(user));
         req.responses.data = Utils.createResponse(datas);
@@ -826,3 +934,6 @@ exports.checkSystemOrCurrentAccount = checkSystemOrCurrentAccount;
 exports.checkSystemOrTeacherAccount = checkSystemOrTeacherAccount;
 exports.getRequestUser = getRequestUser;
 exports.getAllEmails = getAllEmails;
+
+exports.postUsers = postUsers;
+exports.getUsersInfo = getUsersInfo

@@ -8,6 +8,8 @@ let authController = require('../controllers/auth');
 /*-------------------GROUP_API-----------------------*/
 router.use(authController.isAuthenticated);
 router.route('/all').get(groupController.getGroups);
+router.route('/import').post(userController.checkSystemOrTeacherAccount, groupController.postGroups, groupController.getGroupsInfo);
+router.route('/importfile').post(userController.checkSystemOrTeacherAccount, fileController.fileUpload, fileController.postFile, fileController.putContentBody, groupController.postGroups, groupController.getGroupsInfo);
 router.route('/create').post(userController.checkSystemOrTeacherAccount, groupController.postGroup, groupController.getGroup);
 router.route('/info/:groupID').get(groupController.checkGroupRequest, groupController.getGroup);
 router.route('/search').get(groupController.searchGroupByName);

@@ -398,6 +398,68 @@ async function cleanUploadFolder() {
     return filesExisted;
 }
 
+function outputToFile(req, res) {
+    let fileOutput = req.fileitems.fileOutput;
+    let content = fileOutput.content ? fileOutput.content : "";
+    let type = fileOutput.type ? fileOutput.type : 'application/octet-stream';
+    let fileName = fileOutput.name ? fileOutput.name : Utils.randomString(10);
+    let isAttach = (fileOutput.isAttach === true || fileOutput.isAttach === "true");
+    let length = 0;
+    let filePath = fileOutput.filePath;
+
+    let isTempFile = (fileOutput.isTempFile === true || fileOutput.isTempFile === "true");
+    let isCreateTempFile = (fileOutput.isCreateTempFile === true || fileOutput.isCreateTempFile === "true");
+    res.setHeader('Content-Type', type);
+    if (isAttach) {
+        res.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+    } else {
+        res.setHeader("Content-Disposition", "filename=\"" + fileName + "\"");
+    }
+    if (filePath) {
+        try {
+            let readStream = fs.createReadStream(filePath);
+            res.setHeader('Content-Length', fs.statSync(filePath).size);
+            readStream.on("open", () => {
+                readStream.pipe(res);
+            }).on("close", () => {
+                if (isTempFile)
+                res.end();
+            }).on("error", err => {
+                return next(Utils.createError(err, 500, 500, 'Not exit file'));
+            });
+        } catch (error) {
+            return next(Utils.createError(error, 400, 400, 'Not exit file'));
+        }
+    } else {
+        if (isCreateTempFile) {
+            //Create string to temp file.
+        }
+        length = Buffer.byteLength(content);
+        res.setHeader('Content-Length', length);
+        res.send(content);
+    }
+}
+
+function putContentBody(req, res, next) {
+    let file = req.fileitems.file_saved;
+    let localPath = getLocalFilePath(file);
+    fs.readFile(localPath, "utf8", function(error, data) {
+        if (error) {
+            return next(Utils.createError(error, 400));
+        } else {
+            try {
+                let bodys = JSON.parse(data);
+                for (let key in bodys) {
+                    req.body[key] = bodys[key];
+                }
+                return next();
+            } catch(error) {
+                return next(Utils.createError(error, 400));
+            }
+        }
+    });
+}
+
 /*----------------------------------------------- */
 let singleFileUpload = file_upload.single('fileUpload');
 let singleImageUpload = image_upload.single('imageUpload');
@@ -439,3 +501,6 @@ exports.checkFileRequest = checkFileRequest;
 exports.checkFileRequestIfHave = checkFileRequestIfHave;
 exports.updateFile = updateFile;
 exports.postOrUpdateFile = postOrUpdateFile;
+
+exports.putContentBody = putContentBody;
+exports.outputToFile = outputToFile;

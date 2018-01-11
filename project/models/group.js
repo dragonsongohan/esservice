@@ -119,14 +119,15 @@ GroupSchema.pre('save', function (callback) {
 });
 
 function validateGroupName(name, isRequired = true) {
-    if (!name) {
-        return !isRequired;
-    }
-    let re = /^([a-zA-Z\-0-9\.\_\ ]{1,40})$/;
-    if (re.test(name)) {
-        return true;
-    }
-    return false;
+    return Utils.validateStringLength(name, 1, 200, isRequired);
+    // if (!name) {
+    //     return !isRequired;
+    // }
+    // let re = /^([a-zA-Z\-0-9\.\_\ ]{1,40})$/;
+    // if (re.test(name)) {
+    //     return true;
+    // }
+    // return false;
 }
 function validateTypeGroup(typeGroup, isRequired = false) {
     if (!typeGroup) {
@@ -156,7 +157,7 @@ function validateInputInfo(inputInfo, checkRequired = false) {
         message.push("Name Invalid Format");
     }
     //------------ NOT REQUIRED ----------------
-    if (!Utils.validateStringLength(inputInfo.about, 0, 200, false)) {
+    if (!Utils.validateStringLength(inputInfo.about, 0, 2000, false)) {
         message.push("About Invalid Format");
     }
     if (inputInfo.tags) {
@@ -314,7 +315,7 @@ function confirmRequested(user, isUpdateReference = false) {
     if (!requestedUser) {
         return null;
     }
-    if (!addMember.call(this, user)) {
+    if (!addMember.call(this, user, user.isNormalUser() ? 1 : 10)) {
         return null;
     }
     return removeRequested.call(this, user, isUpdateReference) ? user : null;
